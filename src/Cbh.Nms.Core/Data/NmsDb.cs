@@ -23,6 +23,14 @@ public class NmsDb(DbContextOptions<NmsDb> options) : DbContext(options)
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<UserBranchScope> UserBranchScopes => Set<UserBranchScope>();
     public DbSet<AuditLog> AuditLog => Set<AuditLog>();
+    public DbSet<AlertRule> AlertRules => Set<AlertRule>();
+    public DbSet<Alert> Alerts => Set<Alert>();
+    public DbSet<Incident> Incidents => Set<Incident>();
+    public DbSet<IncidentAlert> IncidentAlerts => Set<IncidentAlert>();
+    public DbSet<IncidentTimeline> IncidentTimeline => Set<IncidentTimeline>();
+    public DbSet<EscalationPolicy> EscalationPolicies => Set<EscalationPolicy>();
+    public DbSet<NotificationRule> NotificationRules => Set<NotificationRule>();
+    public DbSet<NotificationLog> NotificationLog => Set<NotificationLog>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -56,5 +64,17 @@ public class NmsDb(DbContextOptions<NmsDb> options) : DbContext(options)
         b.Entity<AuditLog>().Property(x => x.At).ValueGeneratedOnAdd();
         b.Entity<AuditLog>().Property(x => x.OldValue).HasColumnType("jsonb");
         b.Entity<AuditLog>().Property(x => x.NewValue).HasColumnType("jsonb");
+
+        b.Entity<AlertRule>().ToTable("alert_rule", "mon");
+        b.Entity<Alert>().ToTable("alert", "ops");
+        b.Entity<Incident>().ToTable("incident", "ops");
+        b.Entity<Incident>().Property(x => x.Version).IsRowVersion();   // maps to xmin
+        b.Entity<IncidentAlert>().ToTable("incident_alert", "ops").HasKey(x => new { x.IncidentId, x.AlertId });
+        b.Entity<IncidentTimeline>().ToTable("incident_timeline", "ops").HasKey(x => x.TimelineId);
+        b.Entity<IncidentTimeline>().Property(x => x.At).ValueGeneratedOnAdd();
+        b.Entity<EscalationPolicy>().ToTable("escalation_policy", "ops");
+        b.Entity<NotificationRule>().ToTable("notification_rule", "ops");
+        b.Entity<NotificationLog>().ToTable("notification_log", "ops").HasKey(x => x.NotificationId);
+        b.Entity<NotificationLog>().Property(x => x.At).ValueGeneratedOnAdd();
     }
 }

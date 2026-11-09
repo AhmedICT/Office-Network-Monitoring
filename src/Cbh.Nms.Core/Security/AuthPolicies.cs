@@ -16,6 +16,10 @@ public static class AuthPolicies
     public const string EditInventory = "edit-inventory";   // branch/device edit, agents
     public const string Ack = "ack";                         // alert ack, incident update
     public const string Admin = "admin";
+    public const string Maintenance = "maintenance";           // also: close incident
+    public const string ApproveMaintenance = "approve-maintenance";
+    public const string Reports = "reports";
+    public const string Audit = "audit";
 
     public static void Add(AuthorizationOptions o)
     {
@@ -24,6 +28,10 @@ public static class AuthPolicies
         o.AddPolicy(EditInventory, p => p.RequireRole(Roles.SuperAdmin, Roles.NetAdmin));
         o.AddPolicy(Ack, p => p.RequireRole(Roles.SuperAdmin, Roles.HeadOfIt, Roles.ItManager, Roles.NetAdmin, Roles.BranchEngineer));
         o.AddPolicy(Admin, p => p.RequireRole(Roles.SuperAdmin));
+        o.AddPolicy(Maintenance, p => p.RequireRole(Roles.SuperAdmin, Roles.HeadOfIt, Roles.ItManager));
+        o.AddPolicy(ApproveMaintenance, p => p.RequireRole(Roles.SuperAdmin, Roles.HeadOfIt));
+        o.AddPolicy(Reports, p => p.RequireRole(Roles.SuperAdmin, Roles.HeadOfIt, Roles.ItManager, Roles.NetAdmin, Roles.Management));
+        o.AddPolicy(Audit, p => p.RequireRole(Roles.SuperAdmin, Roles.HeadOfIt));
     }
 }
 
