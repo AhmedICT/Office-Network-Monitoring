@@ -1,0 +1,48 @@
+# Implementation decisions and deviations from SRS v0.2
+
+Each item below is a place where the code differs from, or settles a question left open by, `CBH-NMS_SRS.md`.
+They should be folded back into the SRS at its next revision.
+
+## D-01 Offline detection threshold is 90 s, not 3 min (resolves NFR-01 vs §9.1)
+
+§9.1 marks a branch Offline only after 3 minutes without a heartbeat, but NFR-01 requires an offline
+branch on the dashboard within 2 minutes. `BranchStatusRules` now uses two thresholds:
+
+| Condition | Threshold | Result |
+| --- | --- | --- |
+| Poller ping failing **and** heartbeat missing | 90 s (3 missed 30 s cycles) | Offline-Power / Offline-ISP |
+| Heartbeat missing, poller ping OK | 3 min (FR-AV-05 unchanged) | Unknown |
+
+Worst case to dashboard: 90 s + 15 s evaluation tick + SignalR ≈ 1 min 50 s.
+
+## D-02 Central Poller results have their own table
+
+`mon.metric_raw` requires `agent_id`/`agent_seq`, which the Central Poller does not have.
+Poller pings go to a separate hypertable `mon.reachability (time, branch_id, success, rtt_ms)`.
+
+## D-03 Schema fixes
+
+- `org.region`, `inv.device_type`, `inv.snmp_profile`, `sec.app_user` are defined before use.
+- `ops.alert.incident_id` removed; the alert↔incident link is only `ops.incident_alert` (one source of truth).
+- `cbhnms_app` role is created by the migration; `sec.audit_log` gets only SELECT/INSERT (FR-US-04).
+- Added: `org.branch.sla_target_pct`, per-branch `loss_threshold_pct` / `latency_threshold_ms` (§9.1 says
+  they are per-branch), `org.isp_link.probe_target`, `inv.enroll_token`, `inv.branch_config_version`,
+  `ops.incident.started_at` (needed for MTTD), `sec.user_branch_scope.scope_id`.
+- `ops.incident` has a CHECK that Resolved/Closed incidents carry a root cause (FR-IN-04).
+
+## D-04 Role permissions (§7.2 vs §9.4 disagree)
+
+The §9.4 matrix is treated as authoritative. Alert-rule editing will be Super Admin only (SCR-09);
+reports will include Net Admin. Implemented so far: Viewer, EditInventory (Super Admin + Net Admin), Ack, Admin.
+
+## D-05 Agent events
+
+State changes (`up`, `ups_on_battery`) are sent through `/agent/v1/metrics` flagged in the local buffer
+as events: they trigger an immediate send and are never pruned. `/agent/v1/events` is deferred to
+Phase 2 together with SNMP traps/syslog, which are its only other producers.
+
+## D-06 Schema ownership
+
+The schema is owned by plain SQL files in `db/migrations`, applied in order by `SqlMigrator` at Core
+startup (recorded in `public.schema_migrations`). EF Core maps onto it but never generates migrations,
+because hypertables, compression/retention policies and continuous aggregates are not expressible in EF.
