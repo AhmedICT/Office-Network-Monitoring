@@ -6,12 +6,32 @@ using PdfSharp.Fonts;
 
 namespace Cbh.Nms.Core.Reports;
 
+/// <summary>
+/// PDFsharp's .NET build has no font discovery; serve Arial straight from the Windows font folder
+/// (the Core only runs on Windows Server, SRS §2.4). Pinned to PDFsharp 6.1.x: later versions add a license check.
+/// </summary>
+internal sealed class WindowsFontResolver : IFontResolver
+{
+    private static readonly string Dir = Environment.GetFolderPath(Environment.SpecialFolder.Fonts);
+
+    public FontResolverInfo ResolveTypeface(string familyName, bool bold, bool italic) =>
+        new((bold, italic) switch
+        {
+            (true, true) => "arialbi.ttf",
+            (true, false) => "arialbd.ttf",
+            (false, true) => "ariali.ttf",
+            _ => "arial.ttf",
+        });
+
+    public byte[]? GetFont(string faceName) => File.ReadAllBytes(Path.Combine(Dir, faceName));
+}
+
 /// <summary>FR-RP-05: every report exports to Excel and PDF from the same <see cref="ReportTable"/>.</summary>
 public static class ReportExporter
 {
     static ReportExporter()
     {
-        if (OperatingSystem.IsWindows()) GlobalFontSettings.UseWindowsFontsUnderWindows = true;
+        GlobalFontSettings.FontResolver ??= new WindowsFontResolver();
     }
 
     public static byte[] ToXlsx(ReportTable t)

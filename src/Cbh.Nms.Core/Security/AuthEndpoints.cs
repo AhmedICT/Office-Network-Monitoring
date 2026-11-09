@@ -89,13 +89,21 @@ public static class AuthEndpoints
     {
         var name = http.User.Identity!.Name!;
         string? mappedRole = null;
-        if (OperatingSystem.IsWindows() && http.User.Identity is WindowsIdentity wi && wi.Groups is { } groups)
-        {
-            var names = groups.Select(g => { try { return g.Translate(typeof(NTAccount)).Value; } catch { return null; } })
-                .Where(n => n is not null).Select(n => n!).ToList();
-            mappedRole = MapRole(names, opt.Value);
-        }
+        if (OperatingSystem.IsWindows() && http.User.Identity is WindowsIdentity wi)
+            mappedRole = MapRole(GroupNames(wi), opt.Value);
         return await SignInAsync(http, db, name, null, null, null, mappedRole, "WINDOWS", lf);
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static List<string> GroupNames(WindowsIdentity wi)
+    {
+        var names = new List<string>();
+        foreach (var g in wi.Groups ?? [])
+        {
+            try { names.Add(g.Translate(typeof(NTAccount)).Value); }
+            catch (IdentityNotMappedException) { }
+        }
+        return names;
     }
 
     private static async Task<IResult> FormLogin(LoginRequest req, HttpContext http, NmsDb db, IOptions<AuthOptions> opt, ILoggerFactory lf)

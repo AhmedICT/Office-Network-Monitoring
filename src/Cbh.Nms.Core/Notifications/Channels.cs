@@ -45,8 +45,8 @@ public sealed class SmtpEmailSender(IOptions<EmailOptions> options) : IEmailSend
         }
 
         using var smtp = new SmtpClient();
-        await smtp.ConnectAsync(_opt.Host, _opt.Port, _opt.UseStartTls ? SecureSocketOptions.StartTls : SecureSocketOptions.Auto, ct);
-        if (!string.IsNullOrEmpty(_opt.User)) await smtp.AuthenticateAsync(_opt.User, _opt.Password, ct);
+        await smtp.ConnectAsync(_opt.Host!, _opt.Port, _opt.UseStartTls ? SecureSocketOptions.StartTls : SecureSocketOptions.Auto, ct);
+        if (!string.IsNullOrEmpty(_opt.User)) await smtp.AuthenticateAsync(_opt.User, _opt.Password ?? "", ct);
         await smtp.SendAsync(msg, ct);
         await smtp.DisconnectAsync(true, ct);
     }

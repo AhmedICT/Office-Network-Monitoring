@@ -30,7 +30,7 @@ public static partial class ReportEndpoints
         int? regionId, int? branchId, HttpContext http, ReportService svc, BranchScope scope, NmsDb db, CancellationToken ct)
     {
         DateTimeOffset start, end;
-        if (from is { } f && to is { } t2) (start, end) = (f, t2);
+        if (from is { } f && to is { } t2) (start, end) = (f.ToUniversalTime(), t2.ToUniversalTime());
         else if (ParseMonth(month) is (int y, int m)) (start, end) = svc.MonthRange(y, m);
         else return BadMonth();
         var t = await svc.IncidentsAsync(start, end, await scope.AllowedAsync(http.User, ct), regionId, branchId, ct);

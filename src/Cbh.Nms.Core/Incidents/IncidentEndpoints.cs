@@ -38,8 +38,8 @@ public static class IncidentEndpoints
         };
         if (branchId is { } b) q = q.Where(i => i.BranchId == b);
         if (mine == true) { var uid = http.User.UserId(); q = q.Where(i => i.AssignedUserId == uid); }
-        if (from is { } f) q = q.Where(i => i.DetectedAt >= f);
-        if (to is { } t) q = q.Where(i => i.DetectedAt < t);
+        if (from?.ToUniversalTime() is { } f) q = q.Where(i => i.DetectedAt >= f);
+        if (to?.ToUniversalTime() is { } t) q = q.Where(i => i.DetectedAt < t);
 
         var size = Math.Clamp(pageSize ?? 50, 1, 500);
         var pg = Math.Max(page ?? 1, 1);

@@ -25,7 +25,8 @@ public sealed class ReportService(NmsDb db, NpgsqlDataSource ds, IOptions<Notifi
         var start = new DateTimeOffset(year, month, 1, 0, 0, 0, offset);
         var end = start.AddMonths(1);
         var now = DateTimeOffset.UtcNow;
-        return (start, end < now ? end : now);
+        // Npgsql only accepts UTC instants for timestamptz.
+        return (start.ToUniversalTime(), (end < now ? end : now).ToUniversalTime());
     }
 
     private async Task<List<Branch>> BranchesAsync(HashSet<int>? allowed, int? regionId, int? branchId, CancellationToken ct) =>

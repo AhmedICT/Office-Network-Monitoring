@@ -15,6 +15,7 @@ public static class MonitoringEndpoints
         var view = api.MapGroup("").RequireAuthorization(AuthPolicies.Viewer);
         view.MapGet("/dashboard/summary", Summary);
         view.MapGet("/dashboard/branches", Tiles);
+        view.MapGet("/branches/{id:int}/latest", Latest);
         view.MapGet("/branches/{id:int}/metrics", Metrics);
         view.MapGet("/branches/{id:int}/timeline", Timeline);
     }
@@ -56,6 +57,24 @@ public static class MonitoringEndpoints
                                                               && a.Severity == Severity.Critical && branches.Contains(a.BranchId), ct),
             asOfUtc = now,
         });
+    }
+
+    /// <summary>SCR-03 cards and device table: the newest value of every metric the branch's agent reports.</summary>
+    private static async Task<IResult> Latest(int id, HttpContext http, BranchScope scope, NpgsqlDataSource ds, CancellationToken ct)
+    {
+        if (!await scope.CanSeeAsync(http.User, id, ct)) return Results.NotFound();
+        await using var cmd = ds.CreateCommand("""
+            SELECT DISTINCT ON (m.entity_type, m.entity_id, m.metric_key) m.entity_type, m.entity_id, m.metric_key, m.value, m.time
+            FROM mon.metric_raw m JOIN inv.agent a ON a.agent_id = m.agent_id
+            WHERE a.branch_id = $1 AND m.time > now() - interval '1 hour'
+            ORDER BY m.entity_type, m.entity_id, m.metric_key, m.time DESC
+            """);
+        cmd.Parameters.AddWithValue(id);
+        var items = new List<object>();
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
+            items.Add(new { entity = r.GetString(0), id = r.GetInt32(1), key = r.GetString(2), value = r.GetDouble(3), time = r.GetFieldValue<DateTimeOffset>(4) });
+        return Results.Ok(new { items });
     }
 
     /// <summary>SCR-02 tile grid / §7.4: status plus the small indicators each tile shows.</summary>
@@ -124,8 +143,8 @@ public static class MonitoringEndpoints
         DateTimeOffset? to, string? grain, HttpContext http, BranchScope scope, NpgsqlDataSource ds, NmsDb db, CancellationToken ct)
     {
         if (!await scope.CanSeeAsync(http.User, id, ct)) return Results.NotFound();
-        var end = to ?? DateTimeOffset.UtcNow;
-        var start = from ?? end.AddHours(-24);
+        var end = (to ?? DateTimeOffset.UtcNow).ToUniversalTime();
+        var start = (from ?? end.AddHours(-24)).ToUniversalTime();
         grain ??= "raw";
         if (start >= end) return Results.Problem("from must be before to", statusCode: 400);
         if (grain == "raw" && end - start > TimeSpan.FromDays(7)) return Results.Problem("raw grain is limited to 7 days", statusCode: 400);
@@ -157,8 +176,8 @@ public static class MonitoringEndpoints
         BranchScope scope, NmsDb db, CancellationToken ct)
     {
         if (!await scope.CanSeeAsync(http.User, id, ct)) return Results.NotFound();
-        var end = to ?? DateTimeOffset.UtcNow;
-        var start = from ?? end.AddHours(-24);
+        var end = (to ?? DateTimeOffset.UtcNow).ToUniversalTime();
+        var start = (from ?? end.AddHours(-24)).ToUniversalTime();
         var rows = await db.StatusHistory.AsNoTracking()
             .Where(h => h.EntityType == "BRANCH" && h.EntityId == id && h.StartedAt < end && (h.EndedAt == null || h.EndedAt > start))
             .OrderBy(h => h.StartedAt)

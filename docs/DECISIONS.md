@@ -46,3 +46,43 @@ Phase 2 together with SNMP traps/syslog, which are its only other producers.
 The schema is owned by plain SQL files in `db/migrations`, applied in order by `SqlMigrator` at Core
 startup (recorded in `public.schema_migrations`). EF Core maps onto it but never generates migrations,
 because hypertables, compression/retention policies and continuous aggregates are not expressible in EF.
+
+## D-07 Background jobs without Hangfire
+
+SRS §3.1 names Hangfire. The jobs (evaluation, incidents/escalation, notification outbox, monthly report)
+are plain `BackgroundService`s with their state in PostgreSQL (`ops.notification_log` is the outbox,
+`ops.incident.ticket_next_attempt_at` drives Task Management retries, `ops.system_flag` makes monthly jobs
+run once). One less dependency and schema; behaviour (retries at 1/5/15 min) is the same.
+Run a single Core instance; scaling out would need row locking on the outbox.
+
+## D-08 PDF export pinned to PDFsharp-MigraDoc 6.1.1
+
+6.2+ adds a runtime license check that fails without a paid key; 6.1.1 is MIT. QuestPDF was not used because
+its free licence is limited to organisations under USD 1M revenue. Fonts come from `C:\Windows\Fonts`.
+
+## D-09 Task Management API contract is assumed
+
+The PDCL Task Management API is not documented yet (SRS §1.4). `TaskManagementClient` assumes:
+`POST {BaseUrl}/api/tickets` → `{"id": "..."}`; `PATCH {BaseUrl}/api/tickets/{id}` with status/assignee;
+callback `POST /api/v1/integrations/taskmgmt/callback` with header `X-Api-Key` and body
+`{ticketId, status, assignee, rootCause, note}`. Paths are configurable; field names may need adjusting.
+
+## D-10 Login flow
+
+Browsers get a cookie session from either `GET /api/v1/auth/windows` (Negotiate — silent on domain PCs) or
+`POST /api/v1/auth/login` (LDAPS bind, for phones and non-domain PCs; 5 failures → 15 min lock).
+AD groups map to roles via `Auth:GroupRoleMap`; unmapped users must be added in Admin → Users.
+One break-glass account (`Auth:BreakGlass`, PBKDF2 hash) works when AD is down.
+
+## D-11 Notification audience
+
+Level 1 (§9.2) = users with role Branch Engineer whose scope covers the branch + all Network Administrators
+(the NOC). Extra recipients come from `ops.notification_rule` (Admin → Notifications). Unacknowledged
+Critical/High alerts get a reminder SMS every 30 min (`Notifications:RepeatMinutes`), capped by
+`SmsDailyLimit` and `SmsMonthlyBudgetBdt`.
+
+## D-12 Development database runs in Docker
+
+Production follows SRS §2.3 (PostgreSQL for Windows). On developer PCs `run-local.ps1` uses the
+`timescale/timescaledb:latest-pg17` container because the Windows TimescaleDB installer is fiddly to
+automate. The schema and code are identical.

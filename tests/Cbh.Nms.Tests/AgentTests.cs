@@ -1,7 +1,6 @@
 using Cbh.Nms.Agent;
 using Cbh.Nms.Agent.Collectors;
 using Cbh.Nms.Shared;
-using Cbh.Nms.Shared;
 
 namespace Cbh.Nms.Tests;
 

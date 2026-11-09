@@ -60,6 +60,20 @@ public class AvailabilityCalculatorTests
         Assert.Single(AvailabilityCalculator.Merge([new(Start, Start.AddHours(2)), new(Start.AddHours(1), Start.AddHours(3))]));
 }
 
+public class ReportExporterTests
+{
+    private static readonly ReportTable Table = new("Monthly Availability — November 2026", "test",
+        ["Code", "Branch", "Availability %"], [["SAV01", "Savar Branch", 99.62], ["BOG01", "Bogura Branch", 99.31]]) { Flagged = [1] };
+
+    [Fact]
+    public void Pdf_export_renders_without_a_license() =>
+        Assert.Equal("%PDF"u8.ToArray(), ReportExporter.ToPdf(Table)[..4]);
+
+    [Fact]
+    public void Excel_export_is_a_zip_package() =>
+        Assert.Equal("PK"u8.ToArray(), ReportExporter.ToXlsx(Table)[..2]);
+}
+
 public class IncidentTransitionTests
 {
     [Theory]

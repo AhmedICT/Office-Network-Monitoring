@@ -71,7 +71,7 @@ public static class MaintenanceEndpoints
         var w = new MaintenanceWindow
         {
             BranchId = input.DeviceId is null ? input.BranchId : null, DeviceId = input.DeviceId,
-            StartsAt = input.StartsAt, EndsAt = input.EndsAt, Reason = input.Reason.Trim(), ChangeRequestNo = input.ChangeRequestNo,
+            StartsAt = input.StartsAt.ToUniversalTime(), EndsAt = input.EndsAt.ToUniversalTime(), Reason = input.Reason.Trim(), ChangeRequestNo = input.ChangeRequestNo,
             CreatedBy = userId, ApprovedBy = longWindow && canSelfApprove ? userId : null,
         };
         db.MaintenanceWindows.Add(w);

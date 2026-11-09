@@ -480,3 +480,8 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# CBH-NMS
+src/Cbh.Nms.Core/wwwroot/
+publish/
+node_modules/

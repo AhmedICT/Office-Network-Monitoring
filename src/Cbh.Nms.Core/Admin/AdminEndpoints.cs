@@ -202,8 +202,8 @@ public static class AdminEndpoints
         var q = db.AuditLog.AsNoTracking().AsQueryable();
         if (!string.IsNullOrEmpty(user)) q = q.Where(a => a.UserName.Contains(user));
         if (!string.IsNullOrEmpty(action)) q = q.Where(a => a.Action == action);
-        if (from is { } f) q = q.Where(a => a.At >= f);
-        if (to is { } t) q = q.Where(a => a.At < t);
+        if (from?.ToUniversalTime() is { } f) q = q.Where(a => a.At >= f);
+        if (to?.ToUniversalTime() is { } t) q = q.Where(a => a.At < t);
         var size = Math.Clamp(pageSize ?? 100, 1, 500);
         var pg = Math.Max(page ?? 1, 1);
         var total = await q.CountAsync(ct);
