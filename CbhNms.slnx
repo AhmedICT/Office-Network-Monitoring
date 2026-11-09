@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Cbh.Nms.Agent/Cbh.Nms.Agent.csproj" />
+    <Project Path="src/Cbh.Nms.Core/Cbh.Nms.Core.csproj" />
+    <Project Path="src/Cbh.Nms.Poller/Cbh.Nms.Poller.csproj" />
+    <Project Path="src/Cbh.Nms.Shared/Cbh.Nms.Shared.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Cbh.Nms.Tests/Cbh.Nms.Tests.csproj" />
+  </Folder>
+</Solution>

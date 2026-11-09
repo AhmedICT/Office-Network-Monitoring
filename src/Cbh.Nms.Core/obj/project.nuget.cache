@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "dgSpecHash": "C+eTo/lt3AE=",
+  "success": true,
+  "projectFilePath": "E:\\My Project All\\My Project 2026\\Office Network Monitoring\\src\\Cbh.Nms.Core\\Cbh.Nms.Core.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Administrator\\.nuget\\packages\\efcore.namingconventions\\10.0.1\\efcore.namingconventions.10.0.1.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\microsoft.aspnetcore.authentication.negotiate\\10.0.14\\microsoft.aspnetcore.authentication.negotiate.10.0.14.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\microsoft.entityframeworkcore\\10.0.4\\microsoft.entityframeworkcore.10.0.4.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\microsoft.entityframeworkcore.abstractions\\10.0.4\\microsoft.entityframeworkcore.abstractions.10.0.4.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\microsoft.entityframeworkcore.analyzers\\10.0.4\\microsoft.entityframeworkcore.analyzers.10.0.4.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\microsoft.entityframeworkcore.relational\\10.0.4\\microsoft.entityframeworkcore.relational.10.0.4.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\microsoft.extensions.hosting.windowsservices\\10.0.14\\microsoft.extensions.hosting.windowsservices.10.0.14.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\npgsql\\10.0.3\\npgsql.10.0.3.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\npgsql.entityframeworkcore.postgresql\\10.0.3\\npgsql.entityframeworkcore.postgresql.10.0.3.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\system.directoryservices.protocols\\10.0.14\\system.directoryservices.protocols.10.0.14.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\system.serviceprocess.servicecontroller\\10.0.14\\system.serviceprocess.servicecontroller.10.0.14.nupkg.sha512"
+  ],
+  "logs": []
+}

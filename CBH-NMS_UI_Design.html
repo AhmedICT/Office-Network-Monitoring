@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CBH-NMS — UI Design Prototype</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --panel:#ffffff; --ink:#1b2330; --muted:#5f6b7a; --line:#e3e8ef;
+    --brand:#0b5cad; --brand-soft:#e8f1fb;
+    --ok:#1f8a4c; --ok-bg:#e6f4ec; --warn:#b26b00; --warn-bg:#fff4dd;
+    --crit:#c62828; --crit-bg:#fdeaea; --pwr:#6a3fb5; --pwr-bg:#f0eafb;
+    --unk:#6b7280; --unk-bg:#eef0f3;
+    --side:#0f2747;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,"Noto Sans Bengali",sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  .app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+  /* Sidebar */
+  aside{background:var(--side);color:#cfd9e6;padding:18px 12px;position:sticky;top:0;height:100vh}
+  .logo{display:flex;align-items:center;gap:10px;padding:4px 8px 18px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:14px}
+  .logo .mark{width:34px;height:34px;border-radius:8px;background:#1d6fd1;display:grid;place-items:center;color:#fff;font-weight:700}
+  .logo b{color:#fff;display:block;font-size:15px}
+  .logo small{color:#8ea3bd;font-size:11.5px}
+  nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:#cfd9e6;text-decoration:none;cursor:pointer;margin-bottom:2px}
+  nav a:hover{background:rgba(255,255,255,.06)}
+  nav a.active{background:#1d6fd1;color:#fff}
+  nav .badge{margin-left:auto;background:var(--crit);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px}
+  nav .sec{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#7e93ad;padding:14px 10px 6px}
+  .side-foot{position:absolute;bottom:16px;left:12px;right:12px;font-size:11.5px;color:#8ea3bd;padding:10px;border-top:1px solid rgba(255,255,255,.08)}
+  /* Top bar */
+  header{display:flex;align-items:center;gap:14px;padding:12px 24px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  header h1{font-size:18px;margin:0}
+  header .crumb{color:var(--muted);font-size:12.5px}
+  .search{margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:300px;color:var(--muted)}
+  .search input{border:0;background:transparent;outline:0;width:100%;font:inherit}
+  .live{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ok)}
+  .live i{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block;animation:pulse 1.6s infinite}
+  @keyframes pulse{50%{opacity:.35}}
+  .user{display:flex;align-items:center;gap:8px;font-size:13px}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;font-weight:700}
+  main{padding:20px 24px 40px}
+  .sample{background:#fffbea;border:1px solid #f1e2a6;color:#7a5d00;border-radius:8px;padding:8px 12px;font-size:12.5px;margin-bottom:16px}
+  /* Cards */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+  .card h3{margin:0 0 12px;font-size:14.5px;display:flex;align-items:center;gap:8px}
+  .card h3 .sub{margin-left:auto;font-weight:400;color:var(--muted);font-size:12px}
+  .grid{display:grid;gap:16px}
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;border-left:4px solid var(--line)}
+  .kpi .lbl{color:var(--muted);font-size:12px}
+  .kpi .val{font-size:26px;font-weight:700;margin-top:4px}
+  .kpi .hint{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .kpi.ok{border-left-color:var(--ok)} .kpi.warn{border-left-color:var(--warn)} .kpi.crit{border-left-color:var(--crit)} .kpi.pwr{border-left-color:var(--pwr)} .kpi.brand{border-left-color:var(--brand)}
+  .cols{display:grid;grid-template-columns:1fr 340px;gap:16px}
+  /* Status pill */
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:12px;font-size:12px;font-weight:600;white-space:nowrap}
+  .s-ONLINE{background:var(--ok-bg);color:var(--ok)}
+  .s-DEGRADED{background:var(--warn-bg);color:var(--warn)}
+  .s-OFFLINE_ISP{background:var(--crit-bg);color:var(--crit)}
+  .s-OFFLINE_POWER{background:var(--pwr-bg);color:var(--pwr)}
+  .s-UNKNOWN{background:var(--unk-bg);color:var(--unk)}
+  /* Filters */
+  .filters{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:5px 12px;font-size:12.5px;cursor:pointer;color:var(--ink)}
+  .chip.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+  select,.btn{font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--panel);color:var(--ink)}
+  .btn{cursor:pointer}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.sm{padding:3px 9px;font-size:12px}
+  .btn:disabled{opacity:.5;cursor:default}
+  /* Tiles */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:10px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 12px;cursor:pointer;border-top:4px solid var(--ok);transition:box-shadow .15s}
+  .tile:hover{box-shadow:0 2px 10px rgba(15,39,71,.12)}
+  .tile .top{display:flex;justify-content:space-between;align-items:center}
+  .tile .code{font-size:11.5px;color:var(--muted);font-weight:600}
+  .tile .name{font-weight:600;margin:4px 0 6px}
+  .tile .meta{display:flex;gap:10px;font-size:11.5px;color:var(--muted);align-items:center}
+  .isp{display:inline-flex;gap:3px}
+  .isp b{width:16px;height:6px;border-radius:3px;background:var(--ok);display:inline-block}
+  .isp b.down{background:var(--crit)}
+  .tile.ONLINE{border-top-color:var(--ok)} .tile.DEGRADED{border-top-color:var(--warn)} .tile.OFFLINE_ISP{border-top-color:var(--crit)} .tile.OFFLINE_POWER{border-top-color:var(--pwr)} .tile.UNKNOWN{border-top-color:var(--unk)}
+  /* Feed */
+  .feed{display:flex;flex-direction:column;gap:8px;max-height:640px;overflow:auto}
+  .fi{border:1px solid var(--line);border-left:4px solid var(--crit);border-radius:8px;padding:9px 10px}
+  .fi.HIGH{border-left-color:#e65100} .fi.WARNING{border-left-color:var(--warn)} .fi.INFO{border-left-color:var(--brand)}
+  .fi .t{font-weight:600;font-size:13px}
+  .fi .m{font-size:11.5px;color:var(--muted);margin-top:3px;display:flex;justify-content:space-between;align-items:center}
+  .sev{font-size:11px;font-weight:700;padding:1px 7px;border-radius:4px}
+  .sev.CRITICAL{background:var(--crit-bg);color:var(--crit)} .sev.HIGH{background:#fff0e5;color:#e65100} .sev.WARNING{background:var(--warn-bg);color:var(--warn)} .sev.INFO{background:var(--brand-soft);color:var(--brand)}
+  /* Tables */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:9px 10px;border-bottom:1px solid var(--line);background:#fafbfd}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tr:hover td{background:#fafcff}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .below{color:var(--crit);font-weight:700}
+  /* Branch detail */
+  .bhead{display:flex;align-items:flex-start;gap:16px;margin-bottom:16px}
+  .bhead h2{margin:0;font-size:22px}
+  .bhead .info{color:var(--muted);font-size:12.5px;margin-top:4px}
+  .bhead .actions{margin-left:auto;display:flex;gap:8px}
+  .mini{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .mini .card{padding:12px 14px}
+  .mini .row{display:flex;justify-content:space-between;font-size:12.5px;margin-top:6px;color:var(--muted)}
+  .mini .row b{color:var(--ink)}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:14px}
+  .tabs a{padding:8px 14px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent}
+  .tabs a.on{color:var(--brand);border-bottom-color:var(--brand);font-weight:600}
+  .chart{width:100%;height:220px}
+  .tl{display:flex;height:26px;border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+  .tl span{display:block;height:100%}
+  .legend{display:flex;gap:14px;font-size:11.5px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+  /* Incident */
+  .inc-layout{display:grid;grid-template-columns:1fr 420px;gap:16px}
+  .timeline{border-left:2px solid var(--line);margin-left:6px;padding-left:16px}
+  .timeline .ev{position:relative;margin-bottom:14px}
+  .timeline .ev:before{content:"";position:absolute;left:-23px;top:3px;width:10px;height:10px;border-radius:50%;background:var(--brand);border:2px solid #fff}
+  .timeline .ev small{color:var(--muted);display:block}
+  .metrics3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+  .metrics3 div{background:var(--bg);border-radius:8px;padding:8px;text-align:center}
+  .metrics3 b{display:block;font-size:17px}
+  .metrics3 small{color:var(--muted);font-size:11px}
+  .row-sel td{background:var(--brand-soft)!important}
+  .bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;width:120px;display:inline-block;vertical-align:middle}
+  .bar i{display:block;height:100%;background:var(--ok)}
+  #i-rows td{white-space:nowrap}
+  .toast{position:fixed;bottom:20px;right:20px;background:var(--side);color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s}
+  .toast.show{opacity:1}
+  .hidden{display:none}
+  @media (max-width:1200px){.kpis{grid-template-columns:repeat(3,1fr)}.cols,.inc-layout{grid-template-columns:1fr}.mini{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="logo"><div class="mark">NMS</div><div><b>CBH-NMS</b><small>PDCL Network Monitoring</small></div></div>
+    <nav id="nav">
+      <div class="sec">Monitoring</div>
+      <a data-v="dashboard" class="active">▦ Dashboard</a>
+      <a data-v="branch">⌂ Branch Detail</a>
+      <a data-v="alerts">⚠ Alerts <span class="badge" id="nav-alerts">0</span></a>
+      <a data-v="incidents">☰ Incidents</a>
+      <div class="sec">Analysis</div>
+      <a data-v="reports">▤ Reports</a>
+      <div class="sec">Administration</div>
+      <a data-v="agents">⚙ Agents & Devices</a>
+    </nav>
+    <div class="side-foot">UI Design Prototype · v0.2<br>SRS: SCR-02 to SCR-09</div>
+  </aside>
+
+  <div>
+    <header>
+      <div><h1 id="title">Dashboard</h1><div class="crumb" id="crumb">All branches · live</div></div>
+      <div class="search">⌕ <input placeholder="Search branch code, name or IP…"></div>
+      <div class="live"><i></i> Live (SignalR)</div>
+      <div class="user"><div class="avatar">MA</div>NOC Engineer</div>
+    </header>
+
+    <main>
+      <div class="sample">Sample data for design review — not real PDCL network data. Branch codes and values are illustrative.</div>
+
+      <!-- DASHBOARD -->
+      <section id="v-dashboard">
+        <div class="kpis" id="kpis"></div>
+        <div class="cols">
+          <div class="card">
+            <h3>Branch Status <span class="sub">Problem branches first · click a tile to open</span></h3>
+            <div class="filters" id="filters"></div>
+            <div class="tiles" id="tiles"></div>
+          </div>
+          <div class="card">
+            <h3>Active Alerts <span class="sub" id="feed-count"></span></h3>
+            <div class="feed" id="feed"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BRANCH DETAIL -->
+      <section id="v-branch" class="hidden">
+        <div class="bhead">
+          <div>
+            <h2 id="b-name"></h2>
+            <div class="info" id="b-info"></div>
+          </div>
+          <div class="actions">
+            <button class="btn">Start Maintenance</button>
+            <button class="btn">Edit Branch</button>
+            <button class="btn primary">Export Report</button>
+          </div>
+        </div>
+        <div class="mini" id="b-mini"></div>
+        <div class="tabs" id="b-tabs">
+          <a class="on" data-t="sum">Summary</a><a data-t="dev">Devices</a><a data-t="tl">Timeline</a><a data-t="inc">Incidents</a>
+        </div>
+        <div id="t-sum" class="grid" style="grid-template-columns:1fr 1fr">
+          <div class="card"><h3>Primary ISP latency — last 24 h <span class="sub">ms · 5-min average</span></h3><svg class="chart" id="c-lat"></svg></div>
+          <div class="card"><h3>WAN traffic — last 24 h <span class="sub">Mbps · in / out</span></h3><svg class="chart" id="c-bw"></svg></div>
+          <div class="card" style="grid-column:1/-1"><h3>Availability — last 30 days <span class="sub">target 99.5%</span></h3><div class="tl" id="b-30"></div>
+            <div class="legend"><span><i style="background:var(--ok)"></i>Online</span><span><i style="background:var(--warn)"></i>Degraded</span><span><i style="background:var(--crit)"></i>Offline-ISP</span><span><i style="background:var(--pwr)"></i>Offline-Power</span><span><i style="background:#c9ced6"></i>Maintenance</span></div></div>
+        </div>
+        <div id="t-dev" class="card hidden"><h3>Devices <span class="sub">dependency: Router → Switch → Server/AP</span></h3><table><thead><tr><th>Device</th><th>Type</th><th>Vendor</th><th>IP</th><th>Status</th><th class="num">CPU</th><th>Uptime</th><th>Parent</th></tr></thead><tbody id="b-dev"></tbody></table></div>
+        <div id="t-tl" class="card hidden"><h3>Status timeline — last 24 h</h3><div class="tl" id="b-24"></div><div class="legend"><span>00:00</span><span style="margin-left:auto">now</span></div>
+          <table style="margin-top:14px"><thead><tr><th>From</th><th>To</th><th>Status</th><th>Duration</th><th>Note</th></tr></thead><tbody id="b-tlrows"></tbody></table></div>
+        <div id="t-inc" class="card hidden"><h3>Incidents at this branch</h3><table><thead><tr><th>No.</th><th>Title</th><th>Severity</th><th>Status</th><th>Root cause</th><th class="num">MTTR</th></tr></thead><tbody id="b-inc"></tbody></table></div>
+      </section>
+
+      <!-- ALERTS -->
+      <section id="v-alerts" class="hidden">
+        <div class="card">
+          <h3>Alert Console <span class="sub">Ack requires a comment · suppressed alerts hidden by default</span></h3>
+          <div class="filters">
+            <select><option>All severities</option><option>Critical</option><option>High</option><option>Warning</option></select>
+            <select><option>All regions</option><option>Dhaka</option><option>Rajshahi</option><option>Chattogram</option></select>
+            <label class="chip"><input type="checkbox" id="showSup"> Show suppressed</label>
+            <button class="btn primary sm" id="bulkAck" style="margin-left:auto">Acknowledge selected</button>
+          </div>
+          <table><thead><tr><th><input type="checkbox" id="allChk"></th><th>Raised</th><th>Branch</th><th>Device</th><th>Severity</th><th>Title</th><th>Duration</th><th>Ack</th><th>Incident</th></tr></thead><tbody id="a-rows"></tbody></table>
+        </div>
+      </section>
+
+      <!-- INCIDENTS -->
+      <section id="v-incidents" class="hidden">
+        <div class="inc-layout">
+          <div class="card">
+            <h3>Incidents <span class="sub">synced with Task Management</span></h3>
+            <div class="filters"><span class="chip on">Open</span><span class="chip">My incidents</span><span class="chip">Resolved</span><span class="chip">All</span></div>
+            <table><thead><tr><th>No.</th><th>Branch</th><th>Severity</th><th>Status</th><th>Assignee</th><th>Opened</th><th>Esc.</th><th>Ticket</th></tr></thead><tbody id="i-rows"></tbody></table>
+          </div>
+          <div class="card" id="i-detail"></div>
+        </div>
+      </section>
+
+      <!-- REPORTS -->
+      <section id="v-reports" class="hidden">
+        <div class="card">
+          <h3>Monthly Availability Report
+            <span class="sub" style="display:flex;gap:8px;align-items:center">
+              <select><option>Availability</option><option>Incidents</option><option>ISP comparison</option><option>Power</option></select>
+              <select><option>October 2026</option><option>September 2026</option></select>
+              <button class="btn sm">PDF</button><button class="btn sm">Excel</button>
+            </span></h3>
+          <table><thead><tr><th>Branch</th><th>Region</th><th class="num">Availability</th><th>vs target 99.5%</th><th class="num">Downtime</th><th class="num">Incidents</th><th class="num">MTTR</th><th>Main cause</th></tr></thead><tbody id="r-rows"></tbody></table>
+        </div>
+      </section>
+
+      <!-- AGENTS -->
+      <section id="v-agents" class="hidden">
+        <div class="grid" style="grid-template-columns:2fr 1fr">
+          <div class="card">
+            <h3>Branch Agents <span class="sub"><button class="btn primary sm">+ Enrollment token</button></span></h3>
+            <table><thead><tr><th>Branch</th><th>Host</th><th>Version</th><th>Config</th><th>Last heartbeat</th><th class="num">Buffer rows</th><th>Status</th><th></th></tr></thead><tbody id="ag-rows"></tbody></table>
+          </div>
+          <div class="card">
+            <h3>Alert Rules</h3>
+            <table><thead><tr><th>Rule</th><th>Condition</th><th>Severity</th></tr></thead><tbody>
+              <tr><td>ISP link down</td><td>4 failed pings</td><td><span class="sev HIGH">HIGH</span></td></tr>
+              <tr><td>High packet loss</td><td>loss &gt; 5% for 10 min</td><td><span class="sev WARNING">WARNING</span></td></tr>
+              <tr><td>High latency</td><td>latency &gt; 300 ms for 10 min</td><td><span class="sev WARNING">WARNING</span></td></tr>
+              <tr><td>UPS on battery</td><td>on_battery = 1</td><td><span class="sev HIGH">HIGH</span></td></tr>
+              <tr><td>HIS unreachable</td><td>HTTP check fails 3×</td><td><span class="sev CRITICAL">CRITICAL</span></td></tr>
+              <tr><td>Disk almost full</td><td>disk &gt; 85%</td><td><span class="sev WARNING">WARNING</span></td></tr>
+            </tbody></table>
+            <h3 style="margin-top:18px">SMS budget — November <span class="sub">limit ৳2,000</span></h3>
+            <div class="bar" style="width:100%;height:10px"><i style="width:34%"></i></div>
+            <div style="font-size:12px;color:var(--muted);margin-top:6px">৳680 used (34%) · alert to Head of IT at 80%</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- Sample data (illustrative) ---------- */
+const LABEL={ONLINE:"● Online",DEGRADED:"▲ Degraded",OFFLINE_ISP:"✕ Offline · ISP",OFFLINE_POWER:"⚡ Offline · Power",UNKNOWN:"? Unknown"};
+const regions=["Dhaka","Dhaka","Dhaka","Chattogram","Rajshahi","Khulna","Sylhet"];
+const named={1:"Savar",2:"Bogura",3:"Dhanmondi",4:"Mirpur",5:"Uttara",6:"Chattogram",7:"Sylhet",8:"Khulna",9:"Rajshahi",10:"Rangpur"};
+const special={1:"DEGRADED",2:"OFFLINE_POWER",14:"OFFLINE_ISP",23:"DEGRADED",29:"UNKNOWN"};
+const branches=Array.from({length:35},(_,i)=>{
+  const n=i+1, st=special[n]||"ONLINE";
+  return {id:n,code:"BR"+String(n).padStart(2,"0"),name:named[n]?named[n]+" Branch":"Branch "+String(n).padStart(2,"0"),
+    region:n===2||n===9||n===10?"Rajshahi":regions[n%regions.length],status:st,
+    lat:st==="ONLINE"?12+((n*7)%20):st==="DEGRADED"?(n===1?342:96):null,
+    isp:[st==="OFFLINE_ISP"||st==="OFFLINE_POWER"?0:1, st==="DEGRADED"&&n===1?0:(st==="ONLINE"||st==="DEGRADED"?1:0)],
+    since:{1:"38 min",2:"12 min",14:"6 min",23:"1 h 05 min",29:"4 min"}[n]||"9 d"};
+});
+const alerts=[
+  {id:1,raised:"14:52",b:2,dev:"BOG01-UPS-01",sev:"CRITICAL",title:"Branch offline · UPS battery depleted",dur:"12 min",ack:null,inc:"INC-2026-000131"},
+  {id:2,raised:"15:01",b:14,dev:"BR14-RTR-01",sev:"HIGH",title:"MPLS + both ISP links unreachable",dur:"6 min",ack:null,inc:"INC-2026-000132"},
+  {id:3,raised:"14:26",b:1,dev:"SAV01-FGT-01",sev:"HIGH",title:"Secondary ISP link down",dur:"38 min",ack:"Rakib H.",inc:"INC-2026-000129"},
+  {id:4,raised:"14:31",b:1,dev:"SAV01-FGT-01",sev:"WARNING",title:"Primary ISP latency > 300 ms (10 min)",dur:"33 min",ack:"Rakib H.",inc:"INC-2026-000129"},
+  {id:5,raised:"14:02",b:23,dev:"BR23-SRV-01",sev:"CRITICAL",title:"HIS health check failing (HTTP 503)",dur:"1 h 05 min",ack:null,inc:"INC-2026-000130"},
+  {id:6,raised:"15:03",b:29,dev:"BR29-AGENT",sev:"WARNING",title:"Agent heartbeat missing · router reachable",dur:"4 min",ack:null,inc:null},
+  {id:7,raised:"14:53",b:2,dev:"BOG01-SW-01",sev:"HIGH",title:"Switch unreachable",dur:"11 min",ack:null,inc:"INC-2026-000131",sup:"Parent down"},
+  {id:8,raised:"13:40",b:9,dev:"BR09-RTR-01",sev:"INFO",title:"Failover to secondary ISP (auto-recovered)",dur:"—",ack:"System",inc:null}
+];
+const incidents=[
+  {no:"INC-2026-000132",b:14,sev:"HIGH",status:"OPEN",who:"—",opened:"15:04",esc:0,ticket:"TM-4521"},
+  {no:"INC-2026-000131",b:2,sev:"CRITICAL",status:"OPEN",who:"—",opened:"14:55",esc:1,ticket:"TM-4519"},
+  {no:"INC-2026-000130",b:23,sev:"CRITICAL",status:"IN_PROGRESS",who:"Nasim A.",opened:"14:05",esc:2,ticket:"TM-4514"},
+  {no:"INC-2026-000129",b:1,sev:"HIGH",status:"ACK",who:"Rakib H.",opened:"14:29",esc:0,ticket:"TM-4512"}
+];
+const B=id=>branches.find(b=>b.id===id);
+
+/* ---------- Helpers ---------- */
+const $=s=>document.querySelector(s);
+const pill=s=>`<span class="pill s-${s}">${LABEL[s]}</span>`;
+const sev=s=>`<span class="sev ${s}">${s}</span>`;
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800)}
+
+/* ---------- Dashboard ---------- */
+let filter="ALL";
+function renderDashboard(){
+  const c=k=>branches.filter(b=>b.status===k).length;
+  const open=incidents.filter(i=>i.status!=="RESOLVED").length, unack=alerts.filter(a=>!a.ack&&!a.sup&&a.sev!=="INFO").length;
+  $("#kpis").innerHTML=[
+    ["brand","Total branches",35,"Configured"],["ok","Online",c("ONLINE"),"Normal"],["warn","Degraded",c("DEGRADED"),"Partial service"],
+    ["crit","Offline · ISP",c("OFFLINE_ISP"),"Link failure"],["pwr","Offline · Power",c("OFFLINE_POWER"),"UPS on battery / down"],
+    ["brand","Availability today","99.62%",`${open} open incidents · ${unack} not acked`]
+  ].map(([k,l,v,h])=>`<div class="kpi ${k}"><div class="lbl">${l}</div><div class="val">${v}</div><div class="hint">${h}</div></div>`).join("");
+  const fs=[["ALL","All ("+branches.length+")"],["PROBLEM","Problems ("+branches.filter(b=>b.status!=="ONLINE").length+")"],["Dhaka","Dhaka"],["Rajshahi","Rajshahi"],["Chattogram","Chattogram"]];
+  $("#filters").innerHTML=fs.map(([k,l])=>`<span class="chip ${filter===k?"on":""}" data-f="${k}">${l}</span>`).join("");
+  const order={OFFLINE_POWER:0,OFFLINE_ISP:1,DEGRADED:2,UNKNOWN:3,ONLINE:4};
+  const list=branches.filter(b=>filter==="ALL"||(filter==="PROBLEM"?b.status!=="ONLINE":b.region===filter)).sort((a,b)=>order[a.status]-order[b.status]||a.id-b.id);
+  $("#tiles").innerHTML=list.map(b=>`<div class="tile ${b.status}" data-b="${b.id}">
+    <div class="top"><span class="code">${b.code}</span>${b.status==="ONLINE"?"":`<span class="pill s-${b.status}" style="font-size:10.5px">${LABEL[b.status].split(" ")[0]}</span>`}</div>
+    <div class="name">${b.name}</div>
+    <div class="meta"><span>${b.lat!=null?b.lat+" ms":"— ms"}</span><span class="isp" title="ISP 1 / ISP 2">${b.isp.map(x=>`<b class="${x?"":"down"}"></b>`).join("")}</span><span>${b.status==="ONLINE"?"":b.since}</span></div></div>`).join("");
+  const active=alerts.filter(a=>!a.sup);
+  $("#feed-count").textContent=active.length+" active";
+  $("#feed").innerHTML=active.map(a=>`<div class="fi ${a.sev}"><div class="t">${a.title}</div>
+    <div class="m"><span>${B(a.b).code} · ${a.dev} · ${a.raised}</span>${a.ack?`<span>✓ ${a.ack}</span>`:a.sev==="INFO"?"":`<button class="btn sm" data-ack="${a.id}">Ack</button>`}</div></div>`).join("");
+  $("#nav-alerts").textContent=unack;
+}
+document.addEventListener("click",e=>{
+  const f=e.target.closest("[data-f]"); if(f){filter=f.dataset.f;renderDashboard();}
+  const t=e.target.closest("[data-b]"); if(t){openBranch(+t.dataset.b);}
+  const a=e.target.closest("[data-ack]"); if(a){const al=alerts.find(x=>x.id==a.dataset.ack); al.ack="You"; toast("Alert acknowledged — notifications paused"); renderDashboard(); renderAlerts();}
+  const n=e.target.closest("nav a"); if(n){show(n.dataset.v);}
+  const tb=e.target.closest("#b-tabs a"); if(tb){document.querySelectorAll("#b-tabs a").forEach(x=>x.classList.toggle("on",x===tb));["sum","dev","tl","inc"].forEach(k=>$("#t-"+k).classList.toggle("hidden",k!==tb.dataset.t));}
+  const ir=e.target.closest("[data-inc]"); if(ir){renderIncident(ir.dataset.inc);}
+});
+
+/* ---------- Branch detail ---------- */
+let current=1;
+function chart(svg,series,colors,unit,thr){
+  const W=svg.clientWidth||520,H=220,p={l:40,r:10,t:10,b:24};
+  const all=series.flat(),max=Math.max(...all,thr||0)*1.1;
+  const x=i=>p.l+i*(W-p.l-p.r)/(series[0].length-1), y=v=>H-p.b-v/max*(H-p.t-p.b);
+  let g="";
+  for(let k=0;k<=4;k++){const v=max*k/4;g+=`<line x1="${p.l}" x2="${W-p.r}" y1="${y(v)}" y2="${y(v)}" stroke="#eef1f5"/><text x="${p.l-6}" y="${y(v)+4}" font-size="10.5" fill="#5f6b7a" text-anchor="end">${Math.round(v)}</text>`}
+  ["00:00","06:00","12:00","18:00","now"].forEach((l,k)=>{g+=`<text x="${p.l+k*(W-p.l-p.r)/4}" y="${H-6}" font-size="10.5" fill="#5f6b7a" text-anchor="middle">${l}</text>`});
+  if(thr){g+=`<line x1="${p.l}" x2="${W-p.r}" y1="${y(thr)}" y2="${y(thr)}" stroke="#c62828" stroke-dasharray="4 4"/><text x="${W-p.r}" y="${y(thr)-5}" font-size="10.5" fill="#c62828" text-anchor="end">threshold ${thr} ${unit}</text>`}
+  series.forEach((s,si)=>{g+=`<polyline fill="none" stroke="${colors[si]}" stroke-width="1.8" points="${s.map((v,i)=>x(i)+","+y(v)).join(" ")}"/>`});
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`); svg.innerHTML=g;
+}
+function seq(n,f){return Array.from({length:n},(_,i)=>f(i))}
+function openBranch(id){
+  current=id; const b=B(id);
+  $("#b-name").innerHTML=`${b.name} <span style="font-size:13px;vertical-align:middle">${pill(b.status)}</span>`;
+  $("#b-info").textContent=`${b.code} · ${b.region} region · Tier ${id<=3?1:2} · Branch IT: +880 17XX-XXXXXX · status since ${b.since}`;
+  const deg=b.status!=="ONLINE";
+  $("#b-mini").innerHTML=`
+    <div class="card"><b>Primary ISP</b> ${b.isp[0]?pill("ONLINE"):pill("OFFLINE_ISP")}<div class="row">Latency <b>${b.lat??"—"} ms</b></div><div class="row">Loss <b>${id===1?"3.8%":b.isp[0]?"0.1%":"100%"}</b></div><div class="row">Circuit <b>ISP-A · 50 Mbps</b></div></div>
+    <div class="card"><b>Secondary ISP</b> ${b.isp[1]?pill("ONLINE"):pill("OFFLINE_ISP")}<div class="row">Latency <b>${b.isp[1]?"21 ms":"—"}</b></div><div class="row">Down since <b>${b.isp[1]?"—":b.since}</b></div><div class="row">Circuit <b>ISP-B · 30 Mbps</b></div></div>
+    <div class="card"><b>UPS</b> ${b.status==="OFFLINE_POWER"?pill("OFFLINE_POWER"):pill("ONLINE")}<div class="row">Input <b>${b.status==="OFFLINE_POWER"?"0 V":"228 V"}</b></div><div class="row">Battery <b>${b.status==="OFFLINE_POWER"?"0%":"100%"}</b></div><div class="row">Runtime <b>${b.status==="OFFLINE_POWER"?"—":"42 min"}</b></div></div>
+    <div class="card"><b>HIS / LIS</b> ${id===23?pill("OFFLINE_ISP").replace("Offline · ISP","Down"):pill("ONLINE")}<div class="row">HIS response <b>${id===23?"HTTP 503":"184 ms"}</b></div><div class="row">DB port <b>${id===23?"timeout":"open"}</b></div><div class="row">Last lab result <b>3 min ago</b></div></div>`;
+  $("#crumb").textContent="Branches › "+b.name;
+  requestAnimationFrame(()=>{
+    chart($("#c-lat"),[seq(72,i=>deg&&i>62?300+Math.sin(i)*40+i%3*12:16+Math.sin(i/5)*5+(i%7))],["#0b5cad"],"ms",300);
+    chart($("#c-bw"),[seq(72,i=>Math.max(2,18+14*Math.sin((i-20)/11)+(i%5))),seq(72,i=>Math.max(1,7+5*Math.sin((i-18)/11)+(i%3)))],["#0b5cad","#1f8a4c"],"Mbps");
+  });
+  const days=seq(30,i=>i===27&&deg?"var(--warn)":i===12?"var(--crit)":i===19?"#c9ced6":"var(--ok)");
+  $("#b-30").innerHTML=days.map(c=>`<span style="flex:1;background:${c};border-right:1px solid #fff"></span>`).join("");
+  $("#b-24").innerHTML=`<span style="flex:20;background:var(--ok)"></span><span style="flex:1;background:var(--warn)"></span><span style="flex:${deg?3:0};background:${b.status==="OFFLINE_POWER"?"var(--pwr)":"var(--warn)"}"></span>`;
+  $("#b-tlrows").innerHTML=(deg?`<tr><td>14:26</td><td>now</td><td>${pill(b.status)}</td><td>${b.since}</td><td>${id===1?"Secondary ISP down, primary latency high":"Auto-detected"}</td></tr>`:"")+
+    `<tr><td>03:10</td><td>03:24</td><td>${pill("DEGRADED")}</td><td>14 min</td><td>Packet loss 7% on primary ISP</td></tr><tr><td>00:00</td><td>03:10</td><td>${pill("ONLINE")}</td><td>3 h 10 min</td><td>—</td></tr>`;
+  const dev=[["FGT-01","Firewall/Router","Fortinet","10."+id+".0.1","ONLINE","22%","41 d","—"],["SW-01","Switch","Cisco","10."+id+".0.2","ONLINE","9%","41 d","FGT-01"],["SRV-01","Server (HIS)","Dell",`10.${id}.0.10`,id===23?"DEGRADED":"ONLINE","37%","12 d","SW-01"],["UPS-01","UPS","APC",`10.${id}.0.20`,b.status==="OFFLINE_POWER"?"OFFLINE_POWER":"ONLINE","—","88 d","SW-01"],["AP-01","Wi-Fi AP","MikroTik",`10.${id}.0.30`,"ONLINE","4%","41 d","SW-01"]];
+  $("#b-dev").innerHTML=dev.map(d=>`<tr><td><b>${b.code}-${d[0]}</b></td><td>${d[1]}</td><td>${d[2]}</td><td>${d[3]}</td><td>${pill(d[4])}</td><td class="num">${d[5]}</td><td>${d[6]}</td><td>${d[7]}</td></tr>`).join("");
+  const bi=incidents.filter(i=>i.b===id);
+  if($("#v-branch").classList.contains("hidden")) show("branch");
+  $("#b-inc").innerHTML=(bi.map(i=>`<tr><td>${i.no}</td><td>${alerts.find(a=>a.inc===i.no)?.title||""}</td><td>${sev(i.sev)}</td><td>${i.status}</td><td>—</td><td class="num">—</td></tr>`).join(""))+
+    `<tr><td>INC-2026-000097</td><td>Primary ISP link down</td><td>${sev("HIGH")}</td><td>CLOSED</td><td>ISP</td><td class="num">47 min</td></tr>`;
+}
+
+/* ---------- Alerts ---------- */
+function renderAlerts(){
+  const showSup=$("#showSup").checked;
+  $("#a-rows").innerHTML=alerts.filter(a=>showSup||!a.sup).map(a=>`<tr>
+    <td><input type="checkbox" class="achk" value="${a.id}" ${a.ack?"disabled":""}></td><td>${a.raised}</td><td>${B(a.b).code} · ${B(a.b).name}</td><td>${a.dev}</td><td>${sev(a.sev)}</td>
+    <td>${a.title}${a.sup?` <span class="pill s-UNKNOWN">suppressed: ${a.sup}</span>`:""}</td><td>${a.dur}</td>
+    <td>${a.ack?"✓ "+a.ack:a.sev==="INFO"?"—":`<button class="btn sm" data-ack="${a.id}">Ack</button>`}</td><td>${a.inc?`<a style="color:var(--brand);cursor:pointer" data-inc="${a.inc}" onclick="show('incidents')">${a.inc}</a>`:"—"}</td></tr>`).join("");
+}
+$("#showSup").onchange=renderAlerts;
+$("#allChk").onchange=e=>document.querySelectorAll(".achk:not(:disabled)").forEach(c=>c.checked=e.target.checked);
+$("#bulkAck").onclick=()=>{const ids=[...document.querySelectorAll(".achk:checked")].map(c=>+c.value);if(!ids.length)return toast("Select alerts first");ids.forEach(id=>alerts.find(a=>a.id===id).ack="You");toast(ids.length+" alert(s) acknowledged");renderAlerts();renderDashboard();};
+
+/* ---------- Incidents ---------- */
+function renderIncidents(){
+  $("#i-rows").innerHTML=incidents.map(i=>`<tr data-inc="${i.no}" style="cursor:pointer"><td><b>${i.no}</b></td><td>${B(i.b).name}</td><td>${sev(i.sev)}</td><td>${i.status.replace("_"," ")}</td><td>${i.who}</td><td>${i.opened}</td><td>${i.esc?"L"+i.esc:"—"}</td><td><a style="color:var(--brand)">${i.ticket}</a></td></tr>`).join("");
+}
+function renderIncident(no){
+  const i=incidents.find(x=>x.no===no)||incidents[2]; const b=B(i.b);
+  document.querySelectorAll("#i-rows tr").forEach(r=>r.classList.toggle("row-sel",r.dataset.inc===i.no));
+  const linked=alerts.filter(a=>a.inc===i.no);
+  $("#i-detail").innerHTML=`<h3>${i.no} ${sev(i.sev)} <span class="sub">${i.ticket} · Task Management</span></h3>
+    <div style="font-weight:600;font-size:15px">${linked[0]?.title||""}</div>
+    <div style="color:var(--muted);font-size:12.5px;margin-top:4px">${b.name} (${b.code}) · Opened ${i.opened} · Escalation ${i.esc?"level "+i.esc:"none"}</div>
+    <div class="metrics3"><div><b>2 min</b><small>MTTD</small></div><div><b>${i.status==="OPEN"?"—":"9 min"}</b><small>MTTA</small></div><div><b>—</b><small>MTTR (open)</small></div></div>
+    <div class="filters"><select><option>${i.status.replace("_"," ")}</option><option>ACK</option><option>IN PROGRESS</option><option>RESOLVED</option></select>
+      <select><option>${i.who==="—"?"Assign engineer…":i.who}</option><option>Rakib H.</option><option>Nasim A.</option></select>
+      <select><option>Root cause…</option><option>ISP</option><option>POWER</option><option>HARDWARE</option><option>CONFIG</option><option>HIS</option></select></div>
+    <h3 style="margin-top:6px">Linked alerts (${linked.length})</h3>
+    ${linked.map(a=>`<div class="fi ${a.sev}" style="margin-bottom:6px"><div class="t">${a.title}</div><div class="m"><span>${a.dev} · ${a.raised}</span>${a.sup?"<span>suppressed</span>":""}</div></div>`).join("")}
+    <h3 style="margin-top:14px">Timeline</h3>
+    <div class="timeline">
+      <div class="ev">Incident auto-created from ${linked.length} alert(s)<small>${i.opened} · System</small></div>
+      <div class="ev">Ticket ${i.ticket} created in Task Management<small>${i.opened} · System</small></div>
+      <div class="ev">SMS sent to Branch Engineer + NOC<small>${i.opened} · SMS Gateway · delivered</small></div>
+      ${i.esc?`<div class="ev">Escalated to ${i.esc>1?"Head of IT":"IT Manager"} (no ack in ${i.esc>1?30:15} min)<small>System</small></div>`:""}
+      ${i.who!=="—"?`<div class="ev">Assigned to ${i.who}<small>IT Manager</small></div>`:""}
+    </div>
+    <textarea placeholder="Add a note…" style="width:100%;min-height:60px;font:inherit;border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px"><button class="btn">Add note</button><button class="btn primary" style="margin-left:auto">Resolve…</button></div>`;
+}
+
+/* ---------- Reports ---------- */
+function renderReports(){
+  const rows=branches.map(b=>{const av=b.id===14?99.12:b.id===2?99.31:b.id===23?99.48:99.5+((b.id*37)%49)/100;return {b,av:Math.min(av,99.99)}}).sort((a,b)=>a.av-b.av);
+  $("#r-rows").innerHTML=rows.map(({b,av})=>{const down=Math.round((100-av)/100*744*60);const ok=av>=99.5;
+    return `<tr><td><b>${b.code}</b> · ${b.name}</td><td>${b.region}</td><td class="num ${ok?"":"below"}">${av.toFixed(2)}%</td>
+    <td><span class="bar"><i style="width:${Math.max(4,(av-98.5)/1.5*100)}%;background:${ok?"var(--ok)":"var(--crit)"}"></i></span> ${ok?"✓ met":"✕ below"}</td>
+    <td class="num">${Math.floor(down/60)} h ${down%60} m</td><td class="num">${ok?(b.id%3):4}</td><td class="num">${ok?"32 m":"1 h 12 m"}</td><td>${ok?(b.id%2?"ISP":"—"):b.id===2?"POWER":"ISP"}</td></tr>`}).join("");
+}
+
+/* ---------- Agents ---------- */
+function renderAgents(){
+  $("#ag-rows").innerHTML=branches.slice(0,12).map(b=>{const st=b.status==="UNKNOWN"||b.status==="OFFLINE_POWER"||b.status==="OFFLINE_ISP";
+    return `<tr><td>${b.code} · ${b.name}</td><td>${b.code}-MON-PC</td><td>1.0.${b.id%3===0?"3":"4"}</td><td>v${40+b.id%5}</td><td>${st?b.since+" ago":"12 s ago"}</td><td class="num">${st?(b.id===14?"2,410":"—"):"0"}</td>
+    <td>${st?pill(b.status==="UNKNOWN"?"UNKNOWN":"OFFLINE_ISP").replace("Offline · ISP","No heartbeat"):pill("ONLINE")}</td><td><button class="btn sm">Revoke</button></td></tr>`}).join("");
+}
+
+/* ---------- Navigation ---------- */
+const TITLES={dashboard:"Dashboard",branch:"Branch Detail",alerts:"Alert Console",incidents:"Incidents",reports:"Reports",agents:"Agents & Devices"};
+function show(v){
+  document.querySelectorAll("main > section").forEach(s=>s.classList.toggle("hidden",s.id!=="v-"+v));
+  document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("active",a.dataset.v===v));
+  $("#title").textContent=TITLES[v]; $("#crumb").textContent=v==="dashboard"?"All branches · live":v==="branch"?"Branches › "+B(current).name:"CBH-NMS";
+  if(v==="branch"&&!$("#b-name").textContent)openBranch(current);
+  if(v==="incidents")renderIncident(document.querySelector(".row-sel")?.dataset.inc||incidents[2].no);
+}
+renderDashboard();renderAlerts();renderIncidents();renderReports();renderAgents();
+</script>
+</body>
+</html>
