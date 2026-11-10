@@ -27,6 +27,7 @@ Needs Docker Desktop (database only), .NET 10 SDK and Node 20+.
 # In the UI: Branches & Devices → add a branch → Agents → "+ Enrollment token", then:
 .\run-local.ps1 -SkipUiBuild -EnrollToken <token>   # also starts a Branch Agent
 .\run-local.ps1 -Stop                 # stop Core / Poller / Agent
+.\run-local.ps1 -Lan                  # also open to other PCs on the LAN (login + firewall: see script header)
 ```
 
 Your Windows account becomes the first Super Admin. In development, e-mails are written as `.eml` files to

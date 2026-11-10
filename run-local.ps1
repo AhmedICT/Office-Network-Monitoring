@@ -6,8 +6,15 @@
   .\run-local.ps1                 start everything (each component in its own window)
   .\run-local.ps1 -Stop           stop the .NET processes (the database container keeps running)
   .\run-local.ps1 -EnrollToken X  first agent run: register it with a token from the UI
+  .\run-local.ps1 -Lan            also reachable from other PCs (http://<this-PC-IP>:5219)
+
+  PCs outside the domain sign in with the form. Give it a dev login once (kept out of git):
+    dotnet user-secrets set "Auth:BreakGlass:User" "nms-admin" --project src\Cbh.Nms.Core
+    dotnet user-secrets set "Auth:BreakGlass:PasswordHash" "<BreakGlassOptions.Hash(password)>" --project src\Cbh.Nms.Core
+  and allow the port once (elevated PowerShell):
+    New-NetFirewallRule -DisplayName 'CBH-NMS Core 5219' -Direction Inbound -Protocol TCP -LocalPort 5219 -RemoteAddress LocalSubnet -Action Allow
 #>
-param([switch]$Stop, [string]$EnrollToken, [switch]$SkipUiBuild)
+param([switch]$Stop, [string]$EnrollToken, [switch]$SkipUiBuild, [switch]$Lan)
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 
@@ -37,7 +44,8 @@ if ($LASTEXITCODE) { throw 'Build failed' }
 
 # 3. Services, each in its own window so logs are visible.
 $me = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-$core = "`$env:ASPNETCORE_ENVIRONMENT='Development'; `$env:ASPNETCORE_URLS='http://localhost:5219'; `$env:Bootstrap__SuperAdminUser='$me'; dotnet run --no-build --no-launch-profile --project '$root\src\Cbh.Nms.Core'"
+$bind = if ($Lan) { 'http://0.0.0.0:5219' } else { 'http://localhost:5219' }
+$core = "`$env:ASPNETCORE_ENVIRONMENT='Development'; `$env:ASPNETCORE_URLS='$bind'; `$env:Bootstrap__SuperAdminUser='$me'; dotnet run --no-build --no-launch-profile --project '$root\src\Cbh.Nms.Core'"
 Start-Process powershell -ArgumentList '-NoExit', '-Command', $core
 do { Start-Sleep 2 } until ((Test-NetConnection localhost -Port 5219 -WarningAction SilentlyContinue).TcpTestSucceeded)
 
@@ -53,3 +61,7 @@ if ($EnrollToken -or (Test-Path "$agentData\agent.key")) {
 }
 Start-Process 'http://localhost:5219/'
 Write-Host 'CBH-NMS is running at http://localhost:5219/' -ForegroundColor Green
+if ($Lan) {
+    Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.PrefixOrigin -in 'Dhcp', 'Manual' } |
+        ForEach-Object { Write-Host "  from other PCs: http://$($_.IPAddress):5219/" -ForegroundColor Green }
+}
