@@ -8,7 +8,8 @@ namespace Cbh.Nms.Core.Inventory;
 
 public sealed record BranchInput(
     string BranchCode, string BranchName, int RegionId, string? Address, decimal? Latitude, decimal? Longitude,
-    short Tier, TimeOnly? OpenTime, TimeOnly? CloseTime, string? MplsRouterIp, decimal? SlaTargetPct, bool IsActive = true);
+    short Tier, TimeOnly? OpenTime, TimeOnly? CloseTime, string? MplsRouterIp, decimal? SlaTargetPct, bool IsActive = true,
+    string? VpnRouterIp = null);
 
 public sealed record DeviceInput(
     int BranchId, short DeviceTypeId, string? Vendor, string HostName, string IpAddress, string? Model,
@@ -84,6 +85,7 @@ public static class InventoryEndpoints
         {
             b.BranchId, Code = b.BranchCode, Name = b.BranchName, Region = b.Region!.Name, b.RegionId, b.Address,
             b.Latitude, b.Longitude, b.Tier, b.OpenTime, b.CloseTime, MplsRouterIp = b.MplsRouterIp?.ToString(),
+            VpnRouterIp = b.VpnRouterIp?.ToString(),
             b.SlaTargetPct, b.IsActive,
             Status = status?.Status ?? "UNKNOWN", StatusSinceUtc = status?.Since, StatusDetail = status?.Detail,
             Contacts = b.Contacts.Select(c => new { c.Name, c.Role, c.Phone, c.Email, c.IsPrimary }),
@@ -130,6 +132,7 @@ public static class InventoryEndpoints
         if (i.Tier is < 1 or > 3) errors["tier"] = ["Tier must be 1, 2 or 3"];
         if (!await db.Regions.AnyAsync(r => r.RegionId == i.RegionId, ct)) errors["regionId"] = ["Unknown region"];
         if (!string.IsNullOrEmpty(i.MplsRouterIp) && !IsIPv4(i.MplsRouterIp)) errors["mplsRouterIp"] = ["Not a valid IPv4 address"];
+        if (!string.IsNullOrEmpty(i.VpnRouterIp) && !IsIPv4(i.VpnRouterIp)) errors["vpnRouterIp"] = ["Not a valid IPv4 address"];
         return errors.Count > 0 ? Results.ValidationProblem(errors) : null;
     }
 
@@ -145,12 +148,13 @@ public static class InventoryEndpoints
         b.OpenTime = i.OpenTime;
         b.CloseTime = i.CloseTime;
         b.MplsRouterIp = string.IsNullOrEmpty(i.MplsRouterIp) ? null : IPAddress.Parse(i.MplsRouterIp);
+        b.VpnRouterIp = string.IsNullOrEmpty(i.VpnRouterIp) ? null : IPAddress.Parse(i.VpnRouterIp);
         b.SlaTargetPct = i.SlaTargetPct ?? 99.50m;
         b.IsActive = i.IsActive;
     }
 
     private static BranchInput ToInput(Branch b) => new(b.BranchCode, b.BranchName, b.RegionId, b.Address, b.Latitude,
-        b.Longitude, b.Tier, b.OpenTime, b.CloseTime, b.MplsRouterIp?.ToString(), b.SlaTargetPct, b.IsActive);
+        b.Longitude, b.Tier, b.OpenTime, b.CloseTime, b.MplsRouterIp?.ToString(), b.SlaTargetPct, b.IsActive, b.VpnRouterIp?.ToString());
 
     // ───────── devices ─────────
 

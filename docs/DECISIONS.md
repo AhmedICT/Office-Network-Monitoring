@@ -81,6 +81,22 @@ Level 1 (§9.2) = users with role Branch Engineer whose scope covers the branch 
 Critical/High alerts get a reminder SMS every 30 min (`Notifications:RepeatMinutes`), capped by
 `SmsDailyLimit` and `SmsMonthlyBudgetBdt`.
 
+## D-13 HO ↔ branch connectivity: MPLS and VPN
+
+Branches reach HO over MPLS and over a site-to-site VPN (IPsec across the internet ISP links); either may be the
+only path or the backup of the other. The SRS only mentions MPLS. Implemented:
+
+- `org.branch.vpn_router_ip` next to `mpls_router_ip` (both optional; Branches & Devices → Edit branch).
+- The Central Poller pings each configured IP every 30 s; `mon.reachability.path` is `MPLS` or `VPN`.
+- §9.1 uses *all* configured paths: the branch is Offline only when every path has failed ≥ 90 s and the agent
+  is silent. One path down while another answers → **Degraded** ("MPLS path to HO down — running on VPN").
+- Each path down raises its own alert (`hopath:{branch}:{path}`; High for Tier-1, otherwise Warning), so the
+  NOC can call the MPLS provider / check the VPN while the branch still works. When the whole branch is offline
+  these alerts are suppressed as `PARENT_DOWN` (one notification, FR-AL-03).
+- SCR-03 shows MPLS / VPN state, RTT and loss, and their latency in the 24 h chart (`GET /branches/{id}/ho-paths`).
+- The agent needs no change: it uses one HO URL and Windows routing picks the working path.
+  `Agent:Auth:AllowedNetworks` must include the source ranges of both paths.
+
 ## D-12 Development database runs in Docker
 
 Production follows SRS §2.3 (PostgreSQL for Windows). On developer PCs `run-local.ps1` uses the

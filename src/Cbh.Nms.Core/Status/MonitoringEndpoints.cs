@@ -18,6 +18,7 @@ public static class MonitoringEndpoints
         view.MapGet("/branches/{id:int}/latest", Latest);
         view.MapGet("/branches/{id:int}/metrics", Metrics);
         view.MapGet("/branches/{id:int}/timeline", Timeline);
+        view.MapGet("/branches/{id:int}/ho-paths", HoPaths);
     }
 
     // FR-DB-01: KPI row.
@@ -170,6 +171,75 @@ public static class MonitoringEndpoints
         while (await r.ReadAsync(ct))
             points.Add(new { t = r.GetFieldValue<DateTimeOffset>(0), avg = r.GetDouble(1), min = r.GetDouble(2), max = r.GetDouble(3) });
         return Results.Ok(new { entity, entityId = eid, key, grain, points });
+    }
+
+    /// <summary>SCR-03 "HO link" cards and chart: Central Poller results per HO path (MPLS / VPN, D-13).
+    /// Only configured paths are returned; points are 5-minute buckets (range ≤ 7 days).</summary>
+    private static async Task<IResult> HoPaths(int id, DateTimeOffset? from, DateTimeOffset? to, HttpContext http,
+        BranchScope scope, NpgsqlDataSource ds, CancellationToken ct)
+    {
+        if (!await scope.CanSeeAsync(http.User, id, ct)) return Results.NotFound();
+        var end = (to ?? DateTimeOffset.UtcNow).ToUniversalTime();
+        var start = (from ?? end.AddHours(-24)).ToUniversalTime();
+        if (start >= end || end - start > TimeSpan.FromDays(7)) return Results.Problem("range must be 0–7 days", statusCode: 400);
+
+        var configured = new List<(string Path, string Ip)>();
+        await using (var cmd = ds.CreateCommand(
+            "SELECT host(mpls_router_ip), host(vpn_router_ip) FROM org.branch WHERE branch_id = $1"))
+        {
+            cmd.Parameters.AddWithValue(id);
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            if (!await r.ReadAsync(ct)) return Results.NotFound();
+            if (!r.IsDBNull(0)) configured.Add((HoPathNames.Mpls, r.GetString(0)));
+            if (!r.IsDBNull(1)) configured.Add((HoPathNames.Vpn, r.GetString(1)));
+        }
+
+        var now = new Dictionary<string, (bool Up, double? Rtt, DateTimeOffset At, double? AvgRtt, double LossPct)>();
+        await using (var cmd = ds.CreateCommand("""
+            SELECT path, (array_agg(success ORDER BY time DESC))[1], (array_agg(rtt_ms ORDER BY time DESC))[1], max(time),
+                   avg(rtt_ms), 100.0 * count(*) FILTER (WHERE NOT success) / count(*)
+            FROM mon.reachability WHERE branch_id = $1 AND time > now() - interval '10 minutes'
+            GROUP BY path
+            """))
+        {
+            cmd.Parameters.AddWithValue(id);
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            while (await r.ReadAsync(ct))
+                now[r.GetString(0)] = (r.GetBoolean(1), r.IsDBNull(2) ? null : r.GetFloat(2), r.GetFieldValue<DateTimeOffset>(3),
+                    r.IsDBNull(4) ? null : r.GetDouble(4), Convert.ToDouble(r.GetValue(5)));
+        }
+
+        var points = new Dictionary<string, List<object>>();
+        await using (var cmd = ds.CreateCommand("""
+            SELECT path, time_bucket(interval '5 minutes', time) AS t, avg(rtt_ms),
+                   100.0 * count(*) FILTER (WHERE NOT success) / count(*)
+            FROM mon.reachability WHERE branch_id = $1 AND time >= $2 AND time < $3
+            GROUP BY path, t ORDER BY path, t
+            """))
+        {
+            cmd.Parameters.AddWithValue(id); cmd.Parameters.AddWithValue(start); cmd.Parameters.AddWithValue(end);
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            while (await r.ReadAsync(ct))
+            {
+                var path = r.GetString(0);
+                if (!points.TryGetValue(path, out var list)) points[path] = list = [];
+                list.Add(new { t = r.GetFieldValue<DateTimeOffset>(1), rttMs = r.IsDBNull(2) ? (double?)null : Math.Round(r.GetDouble(2), 1),
+                               lossPct = Math.Round(Convert.ToDouble(r.GetValue(3)), 1) });
+            }
+        }
+
+        return Results.Ok(new
+        {
+            paths = configured.Select(c => new
+            {
+                path = c.Path, ip = c.Ip,
+                up = now.TryGetValue(c.Path, out var n) ? n.Up : (bool?)null,
+                rttMs = n.Rtt, avgRttMs10m = n.AvgRtt is { } a ? Math.Round(a, 1) : (double?)null,
+                lossPct10m = now.ContainsKey(c.Path) ? Math.Round(n.LossPct, 1) : (double?)null,
+                lastPollUtc = now.ContainsKey(c.Path) ? n.At : (DateTimeOffset?)null,
+                points = points.GetValueOrDefault(c.Path) ?? [],
+            }),
+        });
     }
 
     private static async Task<IResult> Timeline(int id, DateTimeOffset? from, DateTimeOffset? to, HttpContext http,

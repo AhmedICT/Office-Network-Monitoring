@@ -41,18 +41,24 @@ public sealed class StatusEngine(NpgsqlDataSource dataSource, IHubContext<Status
 
     private const string SignalsSql = """
         WITH b AS (
-            SELECT branch_id, mpls_router_ip IS NOT NULL AS poller, loss_threshold_pct, latency_threshold_ms
+            SELECT branch_id, mpls_router_ip IS NOT NULL AS mpls, vpn_router_ip IS NOT NULL AS vpn,
+                   loss_threshold_pct, latency_threshold_ms
             FROM org.branch WHERE is_active),
         hb AS (
             SELECT branch_id, max(last_seen_at) AS last_hb FROM inv.agent WHERE NOT is_revoked GROUP BY branch_id),
-        ping AS (
-            SELECT r.branch_id, min(r.time) AS failing_since
+        fails AS (   -- per path: start of the current run of failed pings
+            SELECT r.branch_id, r.path, min(r.time) AS failing_since
             FROM mon.reachability r
             WHERE r.time > $1 - interval '1 hour' AND NOT r.success
               AND r.time > coalesce((SELECT max(ok.time) FROM mon.reachability ok
-                                     WHERE ok.branch_id = r.branch_id AND ok.success
+                                     WHERE ok.branch_id = r.branch_id AND ok.path = r.path AND ok.success
                                        AND ok.time > $1 - interval '1 hour'), '-infinity')
-            GROUP BY r.branch_id),
+            GROUP BY r.branch_id, r.path),
+        ping AS (
+            SELECT branch_id,
+                   min(failing_since) FILTER (WHERE path = 'MPLS') AS mpls_failing,
+                   min(failing_since) FILTER (WHERE path = 'VPN')  AS vpn_failing
+            FROM fails GROUP BY branch_id),
         latest AS (
             SELECT DISTINCT ON (m.agent_id, m.entity_type, m.entity_id, m.metric_key)
                    a.branch_id, m.entity_type, m.entity_id, m.metric_key, m.value
@@ -78,7 +84,8 @@ public sealed class StatusEngine(NpgsqlDataSource dataSource, IHubContext<Status
             WHERE entity_type = 'BRANCH' AND time > $1 - interval '10 minutes'
               AND metric_key IN ('loss_pct', 'latency_ms')
             GROUP BY entity_id)
-        SELECT b.branch_id, b.poller, b.loss_threshold_pct, b.latency_threshold_ms, hb.last_hb, ping.failing_since,
+        SELECT b.branch_id, b.mpls, b.vpn, b.loss_threshold_pct, b.latency_threshold_ms, hb.last_hb,
+               ping.mpls_failing, ping.vpn_failing,
                agg.ups_on_battery, agg.ups_battery_pct, coalesce(agg.isp_down, 0), coalesce(agg.app_down, 0),
                coalesce(agg.crit_down, 0), wan.loss, wan.latency
         FROM b LEFT JOIN hb USING (branch_id) LEFT JOIN ping USING (branch_id)
@@ -95,21 +102,23 @@ public sealed class StatusEngine(NpgsqlDataSource dataSource, IHubContext<Status
         {
             double? D(int i) => r.IsDBNull(i) ? null : Convert.ToDouble(r.GetValue(i));
             DateTimeOffset? T(int i) => r.IsDBNull(i) ? null : r.GetFieldValue<DateTimeOffset>(i);
+            var paths = new List<HoPathSignal>(2);
+            if (r.GetBoolean(1)) paths.Add(new(HoPathNames.Mpls, T(6)));
+            if (r.GetBoolean(2)) paths.Add(new(HoPathNames.Vpn, T(7)));
             list.Add((r.GetInt32(0), new BranchSignals
             {
                 Now = now,
-                PollerConfigured = r.GetBoolean(1),
-                LossThresholdPct = Convert.ToDouble(r.GetValue(2)),
-                LatencyThresholdMs = r.GetInt32(3),
-                LastHeartbeat = T(4),
-                PingFailingSince = T(5),
-                UpsOnBattery = D(6) is { } ob ? ob >= 1 : null,
-                UpsBatteryPct = D(7),
-                IspLinksDown = (int)r.GetInt64(8),
-                AppChecksFailing = (int)r.GetInt64(9),
-                CriticalDevicesDown = (int)r.GetInt64(10),
-                LossPct10m = D(11),
-                LatencyMs10m = D(12),
+                HoPaths = paths,
+                LossThresholdPct = Convert.ToDouble(r.GetValue(3)),
+                LatencyThresholdMs = r.GetInt32(4),
+                LastHeartbeat = T(5),
+                UpsOnBattery = D(8) is { } ob ? ob >= 1 : null,
+                UpsBatteryPct = D(9),
+                IspLinksDown = (int)r.GetInt64(10),
+                AppChecksFailing = (int)r.GetInt64(11),
+                CriticalDevicesDown = (int)r.GetInt64(12),
+                LossPct10m = D(13),
+                LatencyMs10m = D(14),
             }));
         }
         return list;
@@ -130,7 +139,7 @@ public sealed class StatusEngine(NpgsqlDataSource dataSource, IHubContext<Status
             old = (string?)await sel.ExecuteScalarAsync(ct);
         }
 
-        var detail = JsonSerializer.Serialize(new { reason = v.Reason });
+        var detail = JsonSerializer.Serialize(new { reason = v.Reason, hoPathsDown = v.HoPathsDown });
         if (old == v.Status)
         {
             await using var upd = new NpgsqlCommand(

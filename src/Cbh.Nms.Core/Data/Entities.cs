@@ -26,6 +26,7 @@ public class Branch
     public TimeOnly? OpenTime { get; set; }
     public TimeOnly? CloseTime { get; set; }
     public IPAddress? MplsRouterIp { get; set; }
+    public IPAddress? VpnRouterIp { get; set; }
     public decimal SlaTargetPct { get; set; } = 99.50m;
     public decimal LossThresholdPct { get; set; } = 5;
     public int LatencyThresholdMs { get; set; } = 300;

@@ -11,8 +11,7 @@ public class BranchStatusRulesTests
     {
         Now = Now,
         LastHeartbeat = Now.AddSeconds(-20),
-        PollerConfigured = true,
-        PingFailingSince = null,
+        HoPaths = [new(HoPathNames.Mpls)],
         UpsOnBattery = false,
         UpsBatteryPct = 100,
         LossPct10m = 0.2,
@@ -28,28 +27,28 @@ public class BranchStatusRulesTests
     public void Router_down_and_agent_silent_with_ups_on_battery_is_offline_power() =>
         Assert.Equal(BranchStatus.OfflinePower, Status(Healthy() with
         {
-            LastHeartbeat = Now.AddMinutes(-2), PingFailingSince = Now.AddMinutes(-2), UpsOnBattery = true,
+            LastHeartbeat = Now.AddMinutes(-2), HoPaths = [new(HoPathNames.Mpls, Now.AddMinutes(-2))], UpsOnBattery = true,
         }));
 
     [Fact]
     public void Low_battery_alone_counts_as_power_warning() =>
         Assert.Equal(BranchStatus.OfflinePower, Status(Healthy() with
         {
-            LastHeartbeat = Now.AddMinutes(-2), PingFailingSince = Now.AddMinutes(-2), UpsBatteryPct = 4,
+            LastHeartbeat = Now.AddMinutes(-2), HoPaths = [new(HoPathNames.Mpls, Now.AddMinutes(-2))], UpsBatteryPct = 4,
         }));
 
     [Fact]
     public void Router_down_and_agent_silent_without_ups_warning_is_offline_isp() =>
         Assert.Equal(BranchStatus.OfflineIsp, Status(Healthy() with
         {
-            LastHeartbeat = Now.AddMinutes(-2), PingFailingSince = Now.AddMinutes(-2),
+            LastHeartbeat = Now.AddMinutes(-2), HoPaths = [new(HoPathNames.Mpls, Now.AddMinutes(-2))],
         }));
 
     [Fact]
     public void Unknown_ups_state_is_classified_as_isp() =>
         Assert.Equal(BranchStatus.OfflineIsp, Status(Healthy() with
         {
-            LastHeartbeat = Now.AddMinutes(-2), PingFailingSince = Now.AddMinutes(-2), UpsOnBattery = null, UpsBatteryPct = null,
+            LastHeartbeat = Now.AddMinutes(-2), HoPaths = [new(HoPathNames.Mpls, Now.AddMinutes(-2))], UpsOnBattery = null, UpsBatteryPct = null,
         }));
 
     [Fact]
@@ -57,7 +56,7 @@ public class BranchStatusRulesTests
     {
         // Outage begins at T0: last heartbeat arrived just before, first failed poller ping just after.
         var t0 = Now;
-        var s = Healthy() with { LastHeartbeat = t0, PingFailingSince = t0 };
+        var s = Healthy() with { LastHeartbeat = t0, HoPaths = [new(HoPathNames.Mpls, t0)] };
         Assert.NotEqual(BranchStatus.OfflineIsp, Status(s with { Now = t0.AddSeconds(60) }));
         // Worst case adds one 15 s evaluation tick on top of the threshold.
         var detectedBy = t0 + BranchStatusRules.OfflineAfter + StatusEngine.Interval;
@@ -67,7 +66,7 @@ public class BranchStatusRulesTests
 
     [Fact]
     public void Ping_failing_briefly_is_not_offline() =>
-        Assert.Equal(BranchStatus.Online, Status(Healthy() with { PingFailingSince = Now.AddSeconds(-30) }));
+        Assert.Equal(BranchStatus.Online, Status(Healthy() with { HoPaths = [new(HoPathNames.Mpls, Now.AddSeconds(-30))] }));
 
     [Fact]
     public void Agent_silent_but_router_reachable_is_unknown_not_offline_FR_AV_05() =>
@@ -80,7 +79,7 @@ public class BranchStatusRulesTests
     [Fact]
     public void Without_poller_a_silent_agent_is_unknown_never_offline()
     {
-        var s = Healthy() with { PollerConfigured = false, LastHeartbeat = Now.AddMinutes(-10), PingFailingSince = Now.AddMinutes(-10) };
+        var s = Healthy() with { HoPaths = [], LastHeartbeat = Now.AddMinutes(-10) };
         Assert.Equal(BranchStatus.Unknown, Status(s));
     }
 
@@ -116,4 +115,55 @@ public class BranchStatusRulesTests
         Assert.Contains("ISP", v.Reason);
         Assert.Contains("latency 342 ms", v.Reason);
     }
+
+    // ── D-13: MPLS + VPN paths ──
+
+    private static BranchSignals DualPath(DateTimeOffset? mplsFailing = null, DateTimeOffset? vpnFailing = null) =>
+        Healthy() with { HoPaths = [new(HoPathNames.Mpls, mplsFailing), new(HoPathNames.Vpn, vpnFailing)] };
+
+    [Fact]
+    public void Mpls_down_with_vpn_up_is_degraded_not_offline()
+    {
+        var v = BranchStatusRules.Evaluate(DualPath(mplsFailing: Now.AddMinutes(-5)) with { LastHeartbeat = Now.AddMinutes(-2) });
+        Assert.Equal(BranchStatus.Degraded, v.Status);
+        Assert.Contains("MPLS path to HO down — running on VPN", v.Reason);
+        Assert.Equal(["MPLS"], v.HoPathsDown);
+    }
+
+    [Fact]
+    public void Vpn_down_with_mpls_up_is_degraded() =>
+        Assert.Equal(BranchStatus.Degraded, Status(DualPath(vpnFailing: Now.AddMinutes(-3))));
+
+    [Fact]
+    public void Both_paths_down_and_agent_silent_is_offline_isp()
+    {
+        var v = BranchStatusRules.Evaluate(DualPath(Now.AddMinutes(-2), Now.AddMinutes(-2)) with { LastHeartbeat = Now.AddMinutes(-2) });
+        Assert.Equal(BranchStatus.OfflineIsp, v.Status);
+        Assert.Contains("MPLS and VPN", v.Reason);
+        Assert.Equal(2, v.HoPathsDown.Count);
+    }
+
+    [Fact]
+    public void Both_paths_down_with_ups_on_battery_is_offline_power() =>
+        Assert.Equal(BranchStatus.OfflinePower, Status(DualPath(Now.AddMinutes(-2), Now.AddMinutes(-2))
+            with { LastHeartbeat = Now.AddMinutes(-2), UpsOnBattery = true }));
+
+    [Fact]
+    public void One_path_down_and_agent_silent_is_unknown_because_branch_still_answers() =>
+        Assert.Equal(BranchStatus.Unknown, Status(DualPath(mplsFailing: Now.AddMinutes(-5)) with { LastHeartbeat = Now.AddMinutes(-5) }));
+
+    [Fact]
+    public void Brief_path_failure_is_ignored()
+    {
+        var v = BranchStatusRules.Evaluate(DualPath(mplsFailing: Now.AddSeconds(-45)));
+        Assert.Equal(BranchStatus.Online, v.Status);
+        Assert.Empty(v.HoPathsDown);
+    }
+
+    [Fact]
+    public void Vpn_only_branch_goes_offline_when_vpn_down() =>
+        Assert.Equal(BranchStatus.OfflineIsp, Status(Healthy() with
+        {
+            HoPaths = [new(HoPathNames.Vpn, Now.AddMinutes(-2))], LastHeartbeat = Now.AddMinutes(-2),
+        }));
 }

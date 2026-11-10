@@ -79,6 +79,19 @@ public sealed class AlertEngine(IServiceScopeFactory scopes, NpgsqlDataSource ds
                 $"{title!} · {labels.Branch(s.EntityId)}", null, true);
         }
 
+        // ── HO path (MPLS / VPN) down while the branch may still be up on the other path (D-13) ──
+        // Not a branch-status alert, so a whole-branch outage suppresses it as PARENT_DOWN.
+        foreach (var s in statuses)
+        {
+            foreach (var path in HoPathsDown(s.Detail))
+            {
+                var key = $"hopath:{s.EntityId}:{path}";
+                var severity = labels.Tier(s.EntityId) == 1 ? Severity.High : Severity.Warning;
+                firing[key] = new Candidate(key, null, s.EntityId, null, EntityTypes.Branch, s.EntityId, severity,
+                    $"{path} path to HO down · {labels.Branch(s.EntityId)}", null, false);
+            }
+        }
+
         var ctx = await LoadSuppressionContextAsync(db, statuses, now, ct);
         var active = await db.Alerts.Where(a => a.ClearedAt == null).ToListAsync(ct);
         var activeKeys = active.ToDictionary(a => a.DedupKey);
@@ -88,7 +101,8 @@ public sealed class AlertEngine(IServiceScopeFactory scopes, NpgsqlDataSource ds
         var ruleIds = rules.Select(r => r.AlertRuleId).ToHashSet();
         foreach (var a in active)
         {
-            var isStatus = a.DedupKey.StartsWith("status:", StringComparison.Ordinal);
+            var isStatus = a.DedupKey.StartsWith("status:", StringComparison.Ordinal)
+                           || a.DedupKey.StartsWith("hopath:", StringComparison.Ordinal);
             var isFlap = a.DedupKey.StartsWith("flap:", StringComparison.Ordinal);
             var clear =
                 (isStatus && !firing.ContainsKey(a.DedupKey))
@@ -236,4 +250,13 @@ public sealed class AlertEngine(IServiceScopeFactory scopes, NpgsqlDataSource ds
         Dictionary<string, Alert> activeKeys, CancellationToken ct) =>
         !activeKeys.ContainsKey(dedupKey)
         && !await db.Alerts.AnyAsync(a => a.DedupKey == dedupKey && a.RaisedAt > now - FlapWindow, ct);
+
+    private static IEnumerable<string> HoPathsDown(string? detail)
+    {
+        if (string.IsNullOrEmpty(detail)) return [];
+        using var doc = System.Text.Json.JsonDocument.Parse(detail);
+        return doc.RootElement.TryGetProperty("hoPathsDown", out var arr) && arr.ValueKind == System.Text.Json.JsonValueKind.Array
+            ? arr.EnumerateArray().Select(e => e.GetString()).OfType<string>().ToList()
+            : [];
+    }
 }

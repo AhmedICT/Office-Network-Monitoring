@@ -7,12 +7,14 @@ import { fmtDuration, fmtSeconds, fmtTime, Loading, Pill, SevTag, StTag, STATUS_
 import { useLive } from '../live';
 
 interface BranchInfo {
-  branchId: number; code: string; name: string; region: string; address?: string; tier: number; mplsRouterIp?: string;
+  branchId: number; code: string; name: string; region: string; address?: string; tier: number; mplsRouterIp?: string; vpnRouterIp?: string;
   slaTargetPct: number; status: BranchStatus; statusSinceUtc?: string; statusDetail?: string;
   contacts: { name: string; role?: string; phone?: string; email?: string; isPrimary: boolean }[];
   ispLinks: { ispLinkId: number; isp: string; ispSupportPhone?: string; linkRole: string; circuitId?: string; bandwidthMbps: number; isActive: boolean }[];
   agents: { agentId: number; hostName: string; agentVersion?: string; lastSeenAt?: string; bufferRows?: number }[];
 }
+interface HoPath { path: 'MPLS' | 'VPN'; ip: string; up?: boolean; rttMs?: number; avgRttMs10m?: number; lossPct10m?: number; lastPollUtc?: string;
+  points: { t: string; rttMs?: number; lossPct: number }[] }
 interface Latest { entity: string; id: number; key: string; value: number; time: string }
 interface DeviceRow { deviceId: number; type: string; vendor?: string; hostName: string; ipAddress: string; isCritical: boolean; isActive: boolean; parentDeviceIds: number[]; model?: string }
 interface History { status: BranchStatus; startedAt: string; endedAt?: string; inMaintenance: boolean }
@@ -31,12 +33,13 @@ export default function BranchDetail() {
   const branch = useLoad(() => api.get<BranchInfo>(`/branches/${id}`), [id]);
   const latest = useLoad(() => api.get<{ items: Latest[] }>(`/branches/${id}/latest`), [id], 60000);
   const devices = useLoad(() => api.get<{ items: DeviceRow[] }>(`/devices?branchId=${id}`), [id]);
+  const hoPaths = useLoad(() => api.get<{ paths: HoPath[] }>(`/branches/${id}/ho-paths`), [id], 60000);
   const apps = useLoad(() => api.get<{ appCheckId: number; name: string; checkType: string; target: string; isActive: boolean }[]>(`/app-checks?branchId=${id}`), [id]);
 
   useLive(useCallback((e: string, p: unknown) => {
     const bid = (p as { branchId?: number })?.branchId;
-    if (e === 'reconnected' || bid === id) { branch.reload(); latest.reload(); }
-  }, [id, branch.reload, latest.reload]));
+    if (e === 'reconnected' || bid === id) { branch.reload(); latest.reload(); hoPaths.reload(); }
+  }, [id, branch.reload, latest.reload, hoPaths.reload]));
 
   const val = (entity: string, eid: number, key: string) => latest.data?.items.find((x) => x.entity === entity && x.id === eid && x.key === key)?.value;
   const b = branch.data;
@@ -78,10 +81,15 @@ export default function BranchDetail() {
           );
         })}
         <div className="card">
-          <div className="hd">HO link (MPLS) {val('BRANCH', id, 'up') == null ? <Pill s="UNKNOWN" /> : <Pill s={val('BRANCH', id, 'up') ? 'ONLINE' : 'OFFLINE_ISP'} />}</div>
-          <div className="kv">Latency <b>{fmt(val('BRANCH', id, 'latency_ms'), 'ms')}</b></div>
-          <div className="kv">Jitter <b>{fmt(val('BRANCH', id, 'jitter_ms'), 'ms')}</b></div>
-          <div className="kv">Loss <b>{fmt(val('BRANCH', id, 'loss_pct'), '%')}</b></div>
+          <div className="hd">HO links <span className="muted small">MPLS · VPN</span></div>
+          {(hoPaths.data?.paths ?? []).length === 0 && <div className="kv">No MPLS / VPN IP set</div>}
+          {(hoPaths.data?.paths ?? []).map((p) => (
+            <div className="kv" key={p.path} title={`HO pings ${p.ip} every 30 s · last ${fmtTime(p.lastPollUtc, true)}`}>
+              <span>{p.path} {p.up == null ? <Pill s="UNKNOWN" /> : <Pill s={p.up ? 'ONLINE' : 'OFFLINE_ISP'} />}</span>
+              <b>{p.up ? fmt(p.rttMs, 'ms') : '—'}{p.lossPct10m ? ` · ${fmt(p.lossPct10m, '%')} loss` : ''}</b>
+            </div>
+          ))}
+          <div className="kv">Agent → HO <b>{fmt(val('BRANCH', id, 'latency_ms'), 'ms')} · {fmt(val('BRANCH', id, 'loss_pct'), '%')} loss</b></div>
         </div>
         <div className="card">
           {ups.length === 0 ? <><div className="hd">UPS <span className="muted small">none</span></div><div className="kv">No UPS in inventory</div></> : ups.slice(0, 1).map((u) => {
@@ -125,14 +133,16 @@ function SummaryTab({ id, links }: { id: number; links: BranchInfo['ispLinks'] }
   const to = useMemo(() => new Date().toISOString(), []);
   const from24 = useMemo(() => new Date(Date.now() - 24 * 3600e3).toISOString(), []);
   const lat = useLoad(async () => {
-    const reqs: Promise<Series>[] = [
+    const reqs: Promise<Series | Series[]>[] = [
       api.get<{ points: { t: string; avg: number }[] }>(`/branches/${id}/metrics${qs({ key: 'latency_ms', from: from24, to })}`)
-        .then((r) => ({ name: 'HO (MPLS)', data: r.points.map((p) => ({ x: +new Date(p.t), y: p.avg })) })),
+        .then((r) => ({ name: 'Agent → HO', data: r.points.map((p) => ({ x: +new Date(p.t), y: p.avg })) })),
+      api.get<{ paths: HoPath[] }>(`/branches/${id}/ho-paths${qs({ from: from24, to })}`)
+        .then((r) => r.paths.map((h): Series => ({ name: `HO → ${h.path}`, data: h.points.filter((p) => p.rttMs != null).map((p) => ({ x: +new Date(p.t), y: p.rttMs! })) }))),
       ...links.filter((l) => l.linkRole !== 'MPLS').map((l) =>
         api.get<{ points: { t: string; avg: number }[] }>(`/branches/${id}/metrics${qs({ key: 'latency_ms', entity: 'ISPLINK', entityId: l.ispLinkId, from: from24, to })}`)
           .then((r) => ({ name: `${l.isp} (${l.linkRole.toLowerCase()})`, data: r.points.map((p) => ({ x: +new Date(p.t), y: p.avg })) }))),
     ];
-    return Promise.all(reqs);
+    return Promise.all(reqs).then((all) => all.flat());
   }, [id]);
   const loss = useLoad(() => api.get<{ points: { t: string; avg: number }[] }>(`/branches/${id}/metrics${qs({ key: 'loss_pct', from: from24, to })}`)
     .then((r) => [{ name: 'Packet loss', data: r.points.map((p) => ({ x: +new Date(p.t), y: p.avg })) }]), [id]);

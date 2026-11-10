@@ -30,7 +30,7 @@ Then edit `C:\Program Files\CBH-NMS\Core\appsettings.Production.json` and restar
 {
   "Kestrel": { "Endpoints": { "Main": { "Url": "https://+:443",
     "Certificate": { "Subject": "nms.pdcl.local", "Store": "My", "Location": "LocalMachine" } } } },
-  "Agent": { "HoProbeTarget": "10.0.0.10", "Auth": { "AllowedNetworks": [ "10.0.0.0/8" ] } },
+  "Agent": { "HoProbeTarget": "10.0.0.10", "Auth": { "AllowedNetworks": [ "10.0.0.0/8", "172.16.0.0/12" ] } },
   "Auth": {
     "GroupRoleMap": { "PDCL\NMS-SuperAdmins": "SUPER_ADMIN", "PDCL\NMS-HeadOfIT": "HEAD_OF_IT",
                       "PDCL\NMS-ITManagers": "IT_MANAGER", "PDCL\NMS-NOC": "NET_ADMIN",
@@ -60,7 +60,12 @@ time-out — the evaluation engine runs inside Core.
 ## 3. Each branch
 
 1. SNMPv3 read-only user (authPriv SHA/AES) on FortiGate / Cisco / MikroTik and UPS cards; no v1/v2c (§2.4).
-2. In the UI: add the branch (MPLS router IP), ISP links (probe IPs), devices (or bulk import), SNMP profile.
+2. In the UI: add the branch with its **MPLS router IP** and/or **VPN tunnel IP** (the branch end of the
+   site-to-site VPN), ISP links (probe IPs), devices (or bulk import), SNMP profile.
+   The Central Poller pings both IPs from HO every 30 s, so allow ICMP echo from the HO app server to each of
+   them (MPLS router ACL and the branch firewall's VPN policy). `Agent:Auth:AllowedNetworks` must cover the
+   source addresses agents use over **both** paths (MPLS range and the VPN/branch LAN range), otherwise the
+   agent is refused while the branch is on VPN.
 3. Agents tab → **+ Enrollment token** (valid 24 h, single use).
 4. On the always-on branch PC (elevated), from `publish\Agent`:
    ```powershell

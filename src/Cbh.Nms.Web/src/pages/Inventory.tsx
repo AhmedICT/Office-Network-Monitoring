@@ -42,8 +42,8 @@ function useForm<T extends object>(init: T): [T, Setter<T>, (v: T) => void] {
 // ───────── branches ─────────
 interface BranchRow { branchId: number; code: string; name: string; region: string; regionId: number; tier: number; isActive: boolean; status: string }
 interface BranchForm { branchCode: string; branchName: string; regionId: number; address: string; latitude: string; longitude: string; tier: number;
-  openTime: string; closeTime: string; mplsRouterIp: string; slaTargetPct: string; isActive: boolean }
-const emptyBranch: BranchForm = { branchCode: '', branchName: '', regionId: 0, address: '', latitude: '', longitude: '', tier: 2, openTime: '08:00', closeTime: '22:00', mplsRouterIp: '', slaTargetPct: '99.5', isActive: true };
+  openTime: string; closeTime: string; mplsRouterIp: string; vpnRouterIp: string; slaTargetPct: string; isActive: boolean }
+const emptyBranch: BranchForm = { branchCode: '', branchName: '', regionId: 0, address: '', latitude: '', longitude: '', tier: 2, openTime: '08:00', closeTime: '22:00', mplsRouterIp: '', vpnRouterIp: '', slaTargetPct: '99.5', isActive: true };
 
 function Branches({ openId }: { openId: string | null }) {
   const list = useLoad(() => api.get<{ items: BranchRow[] }>('/branches'), []);
@@ -73,7 +73,7 @@ function Branches({ openId }: { openId: string | null }) {
 
 interface BranchDetailDto {
   branchId: number; code: string; name: string; regionId: number; address?: string; latitude?: number; longitude?: number; tier: number;
-  openTime?: string; closeTime?: string; mplsRouterIp?: string; slaTargetPct: number; isActive: boolean; configVersion: number;
+  openTime?: string; closeTime?: string; mplsRouterIp?: string; vpnRouterIp?: string; slaTargetPct: number; isActive: boolean; configVersion: number;
   contacts: { name: string; role?: string; phone?: string; email?: string; isPrimary: boolean }[];
   ispLinks: { ispLinkId: number; isp: string; linkRole: string; circuitId?: string; bandwidthMbps: number; wanInterface?: string; probeTarget?: string; isActive: boolean }[];
   agents: { agentId: number; hostName: string; configVersion: number; lastSeenAt?: string }[];
@@ -87,14 +87,14 @@ function BranchEditor({ id, regions, onClose, onSaved }: { id: number | 'new'; r
     setDetail(d);
     setAll({ branchCode: d.code, branchName: d.name, regionId: d.regionId, address: d.address ?? '', latitude: d.latitude?.toString() ?? '',
       longitude: d.longitude?.toString() ?? '', tier: d.tier, openTime: d.openTime?.slice(0, 5) ?? '', closeTime: d.closeTime?.slice(0, 5) ?? '',
-      mplsRouterIp: d.mplsRouterIp ?? '', slaTargetPct: String(d.slaTargetPct), isActive: d.isActive });
+      mplsRouterIp: d.mplsRouterIp ?? '', vpnRouterIp: d.vpnRouterIp ?? '', slaTargetPct: String(d.slaTargetPct), isActive: d.isActive });
   });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [id]);
 
   const body = () => ({
     ...f, latitude: f.latitude ? +f.latitude : null, longitude: f.longitude ? +f.longitude : null, slaTargetPct: +f.slaTargetPct,
-    openTime: f.openTime || null, closeTime: f.closeTime || null, mplsRouterIp: f.mplsRouterIp || null, address: f.address || null,
+    openTime: f.openTime || null, closeTime: f.closeTime || null, mplsRouterIp: f.mplsRouterIp || null, vpnRouterIp: f.vpnRouterIp || null, address: f.address || null,
   });
   const submit = () => save(() => id === 'new' ? api.post('/branches', body()) : api.put(`/branches/${id}`, body()),
     'Branch saved — agent picks up the change within 5 minutes', () => { onSaved(); if (id === 'new') onClose(); else load(); });
@@ -107,7 +107,8 @@ function BranchEditor({ id, regions, onClose, onSaved }: { id: number | 'new'; r
         <F label="Name"><input value={f.branchName} onChange={(e) => set('branchName', e.target.value)} /></F>
         <F label="Region"><select value={f.regionId} onChange={(e) => set('regionId', +e.target.value)}>{regions.map((r) => <option key={r.regionId} value={r.regionId}>{r.name}</option>)}</select></F>
         <F label="Tier (1 = most critical)"><select value={f.tier} onChange={(e) => set('tier', +e.target.value)}><option>1</option><option>2</option><option>3</option></select></F>
-        <F label="MPLS router IP (Central Poller)"><input value={f.mplsRouterIp} onChange={(e) => set('mplsRouterIp', e.target.value)} placeholder="10.10.0.1" /></F>
+        <F label="MPLS router IP (HO pings over MPLS)"><input value={f.mplsRouterIp} onChange={(e) => set('mplsRouterIp', e.target.value)} placeholder="10.10.0.1" /></F>
+        <F label="VPN tunnel IP (HO pings over VPN)"><input value={f.vpnRouterIp} onChange={(e) => set('vpnRouterIp', e.target.value)} placeholder="172.16.10.1" /></F>
         <F label="SLA target %"><input value={f.slaTargetPct} onChange={(e) => set('slaTargetPct', e.target.value)} /></F>
         <F label="Opens"><input type="time" value={f.openTime} onChange={(e) => set('openTime', e.target.value)} /></F>
         <F label="Closes"><input type="time" value={f.closeTime} onChange={(e) => set('closeTime', e.target.value)} /></F>

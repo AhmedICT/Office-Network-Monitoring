@@ -40,9 +40,9 @@ Install-Svc 'CBH-NMS Core' 'Core' 'Cbh.Nms.Core.exe' 'PDCL CBH-NMS Core Platform
     ConnectionStrings = @{ Nms = $ConnectionString }
     Bootstrap = @{ SuperAdminUser = $SuperAdmin }
     Kestrel = @{ Endpoints = @{ Main = @{ Url = $Urls } } }
-    Agent = @{ Auth = @{ AllowedNetworks = @('10.0.0.0/8') } }
+    Agent = @{ Auth = @{ AllowedNetworks = @('10.0.0.0/8', '172.16.0.0/12') } }   # MPLS + VPN source ranges
 }
-Install-Svc 'CBH-NMS Poller' 'Poller' 'Cbh.Nms.Poller.exe' 'PDCL CBH-NMS Central Poller (MPLS router reachability).' @{
+Install-Svc 'CBH-NMS Poller' 'Poller' 'Cbh.Nms.Poller.exe' 'PDCL CBH-NMS Central Poller (branch reachability over MPLS and VPN).' @{
     ConnectionStrings = @{ Nms = $ConnectionString }
 }
 [Environment]::SetEnvironmentVariable('ASPNETCORE_ENVIRONMENT', 'Production', 'Machine')

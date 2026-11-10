@@ -12,11 +12,11 @@ Deviations from the SRS: [docs/DECISIONS.md](docs/DECISIONS.md) · Production in
 | `src/Cbh.Nms.Core` | ASP.NET Core 10: `/agent/v1`, `/api/v1`, SignalR `/hubs/status`, evaluation engine, notifications, reports; serves the UI | HO app server (IIS or Windows Service) |
 | `src/Cbh.Nms.Web` | React + TypeScript UI (SCR-01…09), built into Core's `wwwroot` | browser |
 | `src/Cbh.Nms.Agent` | Branch Agent Windows Service: ICMP, SNMPv3, HTTP/TCP checks, SQLite store-and-forward | one always-on PC per branch |
-| `src/Cbh.Nms.Poller` | Central Poller Windows Service: pings each branch's MPLS router every 30 s | HO app server |
+| `src/Cbh.Nms.Poller` | Central Poller Windows Service: pings each branch over MPLS and VPN every 30 s | HO app server |
 | `src/Cbh.Nms.Shared` | Agent ↔ HO wire contracts, constants | — |
 | `db/migrations` | Schema (applied automatically by Core at startup) | HO DB server |
 | `deploy/` | `publish.ps1`, `install-ho.ps1`, `install-agent.ps1` | — |
-| `tests/Cbh.Nms.Tests` | xUnit tests (93) | — |
+| `tests/Cbh.Nms.Tests` | xUnit tests (100) | — |
 
 ## Run it on this PC
 
@@ -51,6 +51,7 @@ across a Core restart with no data gap.
 | --- | --- |
 | Inventory: branches, ISP links, contacts, devices, dependencies, agents, SNMP profiles, HIS checks, CSV/XLSX import (FR-BR-01…06) | Done |
 | Availability: ICMP, ISP links, branch status §9.1, monitoring-lost, monthly availability (FR-AV-01…06) | Done |
+| HO ↔ branch over MPLS and VPN: both paths polled, one down = Degraded + alert, both down = Offline (D-13) | Done |
 | Devices: router/firewall, server, UPS via SNMPv3 profiles (FR-DV-01/03/04) | Done |
 | HIS/LIS HTTP + TCP checks (FR-AP-01/02) | Done |
 | Alerts: rules, severities, dependency suppression, flapping, maintenance, channels, recipients, ack (FR-AL-01…08) | Done |
