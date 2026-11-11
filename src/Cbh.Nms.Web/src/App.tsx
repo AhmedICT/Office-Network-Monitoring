@@ -12,6 +12,8 @@ import Reports from './pages/Reports';
 import Maintenance from './pages/Maintenance';
 import Inventory from './pages/Inventory';
 import Admin from './pages/Admin';
+import Endpoints from './pages/Endpoints';
+import EndpointDetail from './pages/EndpointDetail';
 
 type AuthState = { kind: 'loading' } | { kind: 'in'; me: Me } | { kind: 'out'; message?: string };
 
@@ -49,7 +51,7 @@ export default function App() {
 }
 
 const TITLES: [string, string][] = [
-  ['/branches/', 'Branch Detail'], ['/alerts', 'Alert Console'], ['/incidents', 'Incidents'], ['/reports', 'Reports'],
+  ['/branches/', 'Branch Detail'], ['/endpoints/', 'User PC'], ['/endpoints', 'User PCs'], ['/alerts', 'Alert Console'], ['/incidents', 'Incidents'], ['/reports', 'Reports'],
   ['/maintenance', 'Maintenance Windows'], ['/inventory', 'Branches & Devices'], ['/admin', 'Administration'], ['/', 'Dashboard'],
 ];
 
@@ -80,6 +82,7 @@ function Shell({ onSignOut }: { onSignOut: () => void }) {
           <NavLink to="/alerts">⚠ Alerts {summary && summary.activeAlerts > 0 && <span className="badge">{summary.activeAlerts}</span>}</NavLink>
           <NavLink to="/incidents">☰ Incidents {summary && summary.unackedIncidents > 0 && <span className="badge">{summary.unackedIncidents}</span>}</NavLink>
           <NavLink to="/maintenance">⏸ Maintenance</NavLink>
+          <NavLink to="/endpoints">🖥 User PCs</NavLink>
           {can('reports') && <><div className="sec">Analysis</div><NavLink to="/reports">▤ Reports</NavLink></>}
           {(can('inventory.edit') || can('admin') || can('audit')) && <div className="sec">Administration</div>}
           {can('inventory.edit') && <NavLink to="/inventory">⚙ Branches &amp; Devices</NavLink>}
@@ -113,6 +116,8 @@ function Shell({ onSignOut }: { onSignOut: () => void }) {
             <Route path="/reports" element={<Reports />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/endpoints" element={<Endpoints />} />
+            <Route path="/endpoints/:id" element={<EndpointDetail />} />
             <Route path="*" element={<div className="empty">Page not found.</div>} />
           </Routes>
         </main>

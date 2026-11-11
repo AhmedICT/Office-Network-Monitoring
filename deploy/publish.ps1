@@ -5,6 +5,7 @@
   publish\Core    — HO web app + API (IIS site or Windows Service), UI included in wwwroot
   publish\Poller  — HO Central Poller (Windows Service)
   publish\Agent   — Branch Agent, self-contained win-x64 (branch PCs need no .NET install)
+  publish\Endpoint — Endpoint Agent + session helper for user PCs, self-contained win-x64
 #>
 param([string]$Out = (Join-Path $PSScriptRoot '..\publish'))
 $ErrorActionPreference = 'Stop'
@@ -26,4 +27,10 @@ dotnet publish (Join-Path $root 'src\Cbh.Nms.Poller') -c Release -o (Join-Path $
 dotnet publish (Join-Path $root 'src\Cbh.Nms.Agent') -c Release -r win-x64 --self-contained true `
     -p:PublishSingleFile=true -o (Join-Path $Out 'Agent')
 Copy-Item (Join-Path $PSScriptRoot 'install-agent.ps1') (Join-Path $Out 'Agent') -Force
+foreach ($p in 'Cbh.Nms.Endpoint', 'Cbh.Nms.Endpoint.Session') {
+    dotnet publish (Join-Path $root "src\$p") -c Release -r win-x64 --self-contained true `
+        -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o (Join-Path $Out 'Endpoint')
+    if ($LASTEXITCODE) { throw "$p publish failed" }
+}
+Copy-Item (Join-Path $PSScriptRoot 'install-endpoint.ps1') (Join-Path $Out 'Endpoint') -Force
 Write-Host "Published to $Out" -ForegroundColor Green

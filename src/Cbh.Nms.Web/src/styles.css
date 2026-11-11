@@ -188,3 +188,15 @@ pre.json { background: var(--bg); padding: 8px; border-radius: 6px; font-size: 1
   .kpis { grid-template-columns: repeat(2, 1fr); }
   .mini, .form { grid-template-columns: 1fr; }
 }
+
+/* ───────── User PCs (D-14) ───────── */
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--unk); vertical-align: middle; }
+.dot.ok { background: var(--ok); }
+.mini .big { font-size: 24px; font-weight: 700; margin-top: 4px; }
+.notice { background: var(--warn-bg); border: 1px solid #f0d9a8; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; font-size: 13px; }
+pre.code { background: #0f2747; color: #e8f1fb; padding: 8px 10px; border-radius: 6px; overflow-x: auto; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
+.barrow { display: grid; grid-template-columns: minmax(120px, 260px) 1fr 80px; gap: 10px; align-items: center; font-size: 13px; padding: 3px 0; }
+.barrow .bar { background: var(--bg); border-radius: 4px; height: 10px; overflow: hidden; }
+.barrow .bar i { display: block; height: 100%; background: var(--brand); border-radius: 4px; }
+.barrow span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 700px) { .barrow { grid-template-columns: 1fr 70px; } .barrow .bar { display: none; } }

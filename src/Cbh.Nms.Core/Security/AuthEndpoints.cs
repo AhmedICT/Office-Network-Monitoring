@@ -235,8 +235,8 @@ public static class Permissions
 
     public static string[] For(string role) => role switch
     {
-        Roles.SuperAdmin => ["ack", "incident.update", "incident.close", "inventory.edit", "maintenance", "reports", "admin", "audit"],
-        Roles.HeadOfIt => ["ack", "incident.update", "incident.close", "maintenance", "maintenance.approve", "reports", "audit"],
+        Roles.SuperAdmin => ["ack", "incident.update", "incident.close", "inventory.edit", "maintenance", "reports", "admin", "audit", "endpoint.activity"],
+        Roles.HeadOfIt => ["ack", "incident.update", "incident.close", "maintenance", "maintenance.approve", "reports", "audit", "endpoint.activity"],
         Roles.ItManager => ["ack", "incident.update", "incident.close", "maintenance", "reports"],
         Roles.NetAdmin => ["ack", "incident.update", "inventory.edit", "reports"],
         Roles.BranchEngineer => ["ack", "incident.update"],

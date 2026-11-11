@@ -20,6 +20,8 @@ public static class AuthPolicies
     public const string ApproveMaintenance = "approve-maintenance";
     public const string Reports = "reports";
     public const string Audit = "audit";
+    public const string Endpoint = "endpoint";                 // Endpoint Agent on user PCs (D-14)
+    public const string ActivityView = "endpoint-activity";    // app usage / sessions of staff — restricted
 
     public static void Add(AuthorizationOptions o)
     {
@@ -32,6 +34,8 @@ public static class AuthPolicies
         o.AddPolicy(ApproveMaintenance, p => p.RequireRole(Roles.SuperAdmin, Roles.HeadOfIt));
         o.AddPolicy(Reports, p => p.RequireRole(Roles.SuperAdmin, Roles.HeadOfIt, Roles.ItManager, Roles.NetAdmin, Roles.Management));
         o.AddPolicy(Audit, p => p.RequireRole(Roles.SuperAdmin, Roles.HeadOfIt));
+        o.AddPolicy(Endpoint, p => p.AddAuthenticationSchemes(Endpoints.EndpointAuthHandler.SchemeName).RequireClaim(Endpoints.EndpointAuthHandler.EndpointClaim));
+        o.AddPolicy(ActivityView, p => p.RequireRole(Roles.SuperAdmin, Roles.HeadOfIt));
     }
 }
 

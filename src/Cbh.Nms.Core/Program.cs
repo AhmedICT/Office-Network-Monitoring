@@ -1,3 +1,4 @@
+using Cbh.Nms.Core.Endpoints;
 using Cbh.Nms.Core;
 using Cbh.Nms.Core.Admin;
 using Cbh.Nms.Core.Agents;
@@ -48,6 +49,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     })
     .AddNegotiate()
     .AddScheme<AgentAuthOptions, AgentAuthHandler>(AgentAuthHandler.SchemeName,
+        o => builder.Configuration.GetSection("Agent:Auth").Bind(o))
+    .AddScheme<AgentAuthOptions, EndpointAuthHandler>(EndpointAuthHandler.SchemeName,
         o => builder.Configuration.GetSection("Agent:Auth").Bind(o));
 builder.Services.AddScoped<IClaimsTransformation, AppUserClaimsTransformation>();
 builder.Services.AddAuthorization(AuthPolicies.Add);
@@ -73,6 +76,7 @@ builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
 builder.Services.AddHttpClient<ISmsGateway, HttpSmsGateway>(c => c.Timeout = TimeSpan.FromSeconds(20));
 builder.Services.AddHttpClient<TaskManagementClient>(c => c.Timeout = TimeSpan.FromSeconds(20));
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddSingleton<EndpointAlertSource>();
 
 // Evaluation Engine and background jobs.
 builder.Services.AddHostedService<StatusEngine>();
@@ -80,6 +84,7 @@ builder.Services.AddHostedService<AlertEngine>();
 builder.Services.AddHostedService<IncidentEngine>();
 builder.Services.AddHostedService<NotificationSender>();
 builder.Services.AddHostedService<MonthlyReportJob>();
+builder.Services.AddHostedService<EndpointHousekeeping>();
 
 var app = builder.Build();
 
@@ -110,6 +115,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapAgentApi();
+app.MapEndpointAgentApi();
 var api = app.MapGroup("/api/v1");
 api.MapAuthApi();
 api.MapInventoryApi();
@@ -120,6 +126,7 @@ api.MapIncidentApi();
 api.MapMaintenanceApi();
 api.MapReportApi();
 api.MapAdminApi();
+api.MapEndpointApi();
 app.MapHub<StatusHub>("/hubs/status");
 
 // GET /health: application, PostgreSQL, Central Poller and Evaluation Engine (SRS §7.2).

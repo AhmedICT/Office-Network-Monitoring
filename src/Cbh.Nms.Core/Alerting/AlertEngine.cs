@@ -1,4 +1,5 @@
 using Cbh.Nms.Core.Data;
+using Cbh.Nms.Core.Endpoints;
 using Cbh.Nms.Core.Notifications;
 using Cbh.Nms.Core.Status;
 using Cbh.Nms.Shared;
@@ -15,7 +16,7 @@ namespace Cbh.Nms.Core.Alerting;
 /// alerts to the notification planner.
 /// </summary>
 public sealed class AlertEngine(IServiceScopeFactory scopes, NpgsqlDataSource ds, IHubContext<StatusHub> hub,
-    ILogger<AlertEngine> log) : BackgroundService
+    EndpointAlertSource endpoints, ILogger<AlertEngine> log) : BackgroundService
 {
     public static readonly TimeSpan Interval = TimeSpan.FromSeconds(15);
     public static readonly TimeSpan FlapWindow = TimeSpan.FromMinutes(10);
@@ -92,6 +93,11 @@ public sealed class AlertEngine(IServiceScopeFactory scopes, NpgsqlDataSource ds
             }
         }
 
+        // ── user PCs (D-14) ──
+        foreach (var f in await endpoints.GetAsync(now, ct))
+            firing[f.DedupKey] = new Candidate(f.DedupKey, null, f.BranchId, null, EntityTypes.Endpoint, f.EndpointId,
+                f.Severity, f.Title, null, false);
+
         var ctx = await LoadSuppressionContextAsync(db, statuses, now, ct);
         var active = await db.Alerts.Where(a => a.ClearedAt == null).ToListAsync(ct);
         var activeKeys = active.ToDictionary(a => a.DedupKey);
@@ -102,7 +108,8 @@ public sealed class AlertEngine(IServiceScopeFactory scopes, NpgsqlDataSource ds
         foreach (var a in active)
         {
             var isStatus = a.DedupKey.StartsWith("status:", StringComparison.Ordinal)
-                           || a.DedupKey.StartsWith("hopath:", StringComparison.Ordinal);
+                           || a.DedupKey.StartsWith("hopath:", StringComparison.Ordinal)
+                           || a.DedupKey.StartsWith("ep:", StringComparison.Ordinal);
             var isFlap = a.DedupKey.StartsWith("flap:", StringComparison.Ordinal);
             var clear =
                 (isStatus && !firing.ContainsKey(a.DedupKey))

@@ -73,7 +73,21 @@ time-out — the evaluation engine runs inside Core.
    ```
    The agent needs only outbound HTTPS to HO; open no inbound ports.
 
-## 4. Pilot acceptance (§10.2)
+## 4. User PCs (Endpoint Agent, D-14)
+
+1. In the UI: **User PCs → Enrollment keys → + Enrollment key** for the branch (reusable, e.g. 30 days). Copy the key.
+2. On each PC (elevated), from `publish\Endpoint` — or push the folder and command with GPO / SCCM / Intune:
+   ```powershell
+   .\install-endpoint.ps1 -HoBaseUrl "https://nms.pdcl.local/" -EnrollKey "<key>"
+   ```
+   Installs the service *CBH-NMS Endpoint Agent* and the logon task *CBH-NMS Session Helper*. Outbound HTTPS only.
+   Remove with `.\install-endpoint.ps1 -Uninstall`.
+3. The PC appears under **User PCs** within a minute; full inventory follows within ~30 s.
+4. Optional: **User PCs → Software rules** (e.g. BLOCKED `*torrent*`, REQUIRED your antivirus).
+5. Application usage stays **off** until a Super Admin turns it on under **User PCs → Activity tracking**, after PDCL's
+   written policy is in place and staff are informed. See D-14 for exactly what is and is not collected.
+
+## 5. Pilot acceptance (§10.2)
 
 Pull the ISP cable, switch off UPS mains, stop the HIS service, and confirm each appears on the dashboard
 within 2 minutes with the right status, SMS within 3 minutes, a single notification when the router is down,

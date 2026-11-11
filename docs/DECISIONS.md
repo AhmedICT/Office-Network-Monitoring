@@ -102,3 +102,28 @@ only path or the backup of the other. The SRS only mentions MPLS. Implemented:
 Production follows SRS §2.3 (PostgreSQL for Windows). On developer PCs `run-local.ps1` uses the
 `timescale/timescaledb:latest-pg17` container because the Windows TimescaleDB installer is fiddly to
 automate. The schema and code are identical.
+
+## D-14 User PC monitoring (Endpoint Agent) — added beyond SRS v0.2
+
+PDCL asked to monitor staff PCs as well as branch infrastructure. A second, small agent runs on each user PC and
+reports **directly to HO** over HTTPS (`/endpoint/v1`), like the Branch Agent (same `Agent:Auth:AllowedNetworks`).
+
+| Part | What it does |
+| --- | --- |
+| `Cbh.Nms.Endpoint` (Windows Service, LocalSystem) | Every minute: CPU, memory, disks, top processes (CPU / memory / open connections), adapters, gateway + HO latency/loss, throughput. Every 6 h: hardware (model, serial, CPU, RAM), Windows build, antivirus / firewall / last update / pending reboot, installed software. SQLite outbox (store-and-forward). |
+| `Cbh.Nms.Endpoint.Session` (scheduled task at logon, as the user, no window) | **Only while tracking is on:** every 5 s notes the foreground program's file and product name if there was keyboard/mouse input in the last minute; reports logon / lock / idle / logoff. Talks to the service over a local named pipe; the service takes the user name from the pipe client's Windows token. |
+| Core `ep` schema | `ep.endpoint`, `ep.metric` (hypertable, 30 days), `ep.software` + `ep.software_event` (install / update / removal diff), `ep.software_rule` (BLOCKED / REQUIRED), `ep.app_usage` (seconds per app per user per day), `ep.session_event`, `ep.enroll_key` (reusable per-branch keys for GPO/SCCM). |
+| Alerts | Low disk (< 10 %), antivirus missing / off / out of date, firewall off, blocked software installed, required software missing — through the normal AlertEngine (`ep:` dedup keys), so notifications, suppression and incidents work as for branches. An offline PC is **not** an alert (PCs are switched off at night). |
+
+**Privacy safeguards (application usage):**
+
+- Off by default. Only Super Admin can turn it on, and must confirm that PDCL has a written monitoring policy and
+  staff have been told. On/off is audited; agents follow the setting within 5 minutes; HO discards activity uploads
+  while it is off.
+- Never collected: keystrokes, screenshots, window titles, URLs/browsing history, file names or contents, messages.
+- Only Super Admin and Head of IT can view it (`endpoint.activity`); every view is written to the audit log.
+- Retention configurable (default 90 days), enforced hourly by `EndpointHousekeeping`.
+- The service and task descriptions on the PC state what is collected.
+
+Not done: per-process bandwidth (needs ETW; we show per-process open connections and total throughput instead),
+Wi-Fi SSID/signal, USB device events, remote actions on the PC, agent auto-update.

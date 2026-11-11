@@ -13,10 +13,12 @@ Deviations from the SRS: [docs/DECISIONS.md](docs/DECISIONS.md) · Production in
 | `src/Cbh.Nms.Web` | React + TypeScript UI (SCR-01…09), built into Core's `wwwroot` | browser |
 | `src/Cbh.Nms.Agent` | Branch Agent Windows Service: ICMP, SNMPv3, HTTP/TCP checks, SQLite store-and-forward | one always-on PC per branch |
 | `src/Cbh.Nms.Poller` | Central Poller Windows Service: pings each branch over MPLS and VPN every 30 s | HO app server |
+| `src/Cbh.Nms.Endpoint` | Endpoint Agent Windows Service for **user PCs**: health, software inventory, security, network (D-14) | every staff PC |
+| `src/Cbh.Nms.Endpoint.Session` | Per-user helper (no window): application usage, only when enabled by policy | every staff PC |
 | `src/Cbh.Nms.Shared` | Agent ↔ HO wire contracts, constants | — |
 | `db/migrations` | Schema (applied automatically by Core at startup) | HO DB server |
 | `deploy/` | `publish.ps1`, `install-ho.ps1`, `install-agent.ps1` | — |
-| `tests/Cbh.Nms.Tests` | xUnit tests (100) | — |
+| `tests/Cbh.Nms.Tests` | xUnit tests (121) | — |
 
 ## Run it on this PC
 
@@ -60,4 +62,5 @@ across a Core restart with no data gap.
 | Dashboard: KPIs, tiles, live updates, NOC mode (FR-DB-01/02/04/05) | Done |
 | Reports: availability, incidents, ISP, power; PDF/Excel; monthly e-mail (FR-RP-01…05) | Done |
 | Users: AD login (Windows + LDAPS), group→role, branch scope, append-only audit (FR-US-01…04) | Done |
+| User PCs: health, hardware/software inventory, install/remove history, blocked/required software, antivirus/firewall, network, app usage with privacy controls (D-14) | Done |
 | Not yet built (Phase 2/3): discovery (BR-07), switch ports (DV-02), Wi-Fi clients (DV-05), syslog/traps (DV-06), bandwidth (BW-01…04), LIS last-result age (AP-03), repeat-failure flag (IN-07), map (DB-03), agent auto-update, signed MSI | Pending |

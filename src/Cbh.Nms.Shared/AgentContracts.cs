@@ -9,6 +9,7 @@ public static class EntityTypes
     public const string Device = "DEVICE";
     public const string IspLink = "ISPLINK";
     public const string App = "APP";
+    public const string Endpoint = "ENDPOINT";   // user PC (D-14)
 }
 
 public static class MetricKeys
